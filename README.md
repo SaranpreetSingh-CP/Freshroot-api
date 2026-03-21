@@ -1,83 +1,371 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🌱 Freshroot Farms API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend API for **Freshroot Farms** — a farm-to-consumer platform managing customers, orders, deliveries, kitchen garden setups, expenses, and payments.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Built with [NestJS](https://nestjs.com/) + [Prisma](https://www.prisma.io/) + PostgreSQL.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Table of Contents
 
-## Project setup
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Database Setup](#database-setup)
+- [Running the App](#running-the-app)
+- [API Routes](#api-routes)
+- [Authentication](#authentication)
+- [Seeding the Database](#seeding-the-database)
+- [Scripts Reference](#scripts-reference)
 
-```bash
-$ npm install
+---
+
+## Tech Stack
+
+| Layer      | Technology                           |
+| ---------- | ------------------------------------ |
+| Framework  | NestJS 11                            |
+| Language   | TypeScript                           |
+| ORM        | Prisma 7 (with `@prisma/adapter-pg`) |
+| Database   | PostgreSQL                           |
+| Auth       | JWT (`@nestjs/jwt`)                  |
+| Validation | class-validator / class-transformer  |
+| Runtime    | Node.js (ES2023+)                    |
+
+---
+
+## Project Structure
+
+```
+freshroot-api/
+├── prisma/
+│   ├── schema.prisma          # Database schema (10 models)
+│   ├── seed.ts                # Seed script with sample data
+│   └── migrations/            # Auto-generated migrations
+├── src/
+│   ├── main.ts                # App entry point
+│   ├── app.module.ts          # Root module
+│   ├── app.controller.ts      # Health-check endpoint
+│   ├── app.service.ts
+│   ├── prisma/
+│   │   ├── prisma.module.ts   # Global Prisma module
+│   │   └── prisma.service.ts  # Prisma client service
+│   └── modules/
+│       ├── auth/              # JWT login & guards
+│       ├── users/             # Admin user management
+│       ├── customers/         # Customer CRUD
+│       ├── orders/            # Order CRUD
+│       ├── deliveries/        # Delivery CRUD
+│       ├── kitchen-garden/    # Kitchen garden + visits CRUD
+│       ├── expenses/          # Expense tracking CRUD
+│       └── payments/          # Payment CRUD
+├── .env                       # Environment variables (not committed)
+├── prisma.config.ts           # Prisma CLI config
+├── tsconfig.json
+├── nest-cli.json
+└── package.json
 ```
 
-## Compile and run the project
+Each module follows the pattern:
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+```
+module-name/
+├── dto/
+│   ├── module-name.dto.ts     # Create & Update DTOs with validation
+│   └── index.ts               # Barrel export
+├── module-name.controller.ts  # Route handlers
+├── module-name.service.ts     # Business logic
+└── module-name.module.ts      # NestJS module definition
 ```
 
-## Run tests
+---
+
+## Prerequisites
+
+Make sure you have the following installed:
+
+- **Node.js** >= 18.x — [Download](https://nodejs.org/)
+- **npm** >= 9.x (comes with Node.js)
+- **PostgreSQL** >= 14 — [Download](https://www.postgresql.org/download/) or use [Docker](#using-docker-for-postgres)
+
+### Using Docker for Postgres
+
+If you don't have PostgreSQL installed locally, spin one up with Docker:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+docker run --name freshroot-db \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=freshroot \
+  -p 5432:5432 \
+  -d postgres:16
 ```
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Getting Started
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 1. Clone the repo
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+git clone https://github.com/SaranpreetSingh-CP/Freshroot-api.git
+cd Freshroot-api
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 2. Install dependencies
 
-## Resources
+```bash
+npm install
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+### 3. Set up environment variables
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your local database credentials (see [Environment Variables](#environment-variables)).
+
+### 4. Generate Prisma client
+
+```bash
+npx prisma generate
+```
+
+### 5. Run database migrations
+
+```bash
+npx prisma migrate dev
+```
+
+### 6. Seed the database (optional)
+
+```bash
+npm run seed
+```
+
+### 7. Start the development server
+
+```bash
+npm run start:dev
+```
+
+The API will be available at **http://localhost:4000/api**
+
+---
+
+## Environment Variables
+
+Create a `.env` file in the project root with the following:
+
+```env
+# Database connection
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/freshroot"
+
+# JWT
+JWT_SECRET="your-secret-key-here"
+JWT_EXPIRATION="7d"
+
+# Server
+PORT=4000
+```
+
+| Variable         | Description                       | Default |
+| ---------------- | --------------------------------- | ------- |
+| `DATABASE_URL`   | PostgreSQL connection string      | —       |
+| `JWT_SECRET`     | Secret key for signing JWT tokens | —       |
+| `JWT_EXPIRATION` | Token expiry duration             | `7d`    |
+| `PORT`           | Server port                       | `4000`  |
+
+---
+
+## Database Setup
+
+### Prisma Models
+
+| Model           | Description                                |
+| --------------- | ------------------------------------------ |
+| `User`          | Admin users (email/password login)         |
+| `Customer`      | Farm customers (name, phone, email)        |
+| `Address`       | Customer delivery addresses                |
+| `Subscription`  | Recurring delivery plans                   |
+| `Order`         | Customer orders with items & amounts       |
+| `Delivery`      | Delivery tracking per order                |
+| `KitchenGarden` | Kitchen garden setups at customer location |
+| `KGVisit`       | Maintenance visit logs for gardens         |
+| `Expense`       | Business expense records                   |
+| `Payment`       | Customer payment records                   |
+
+### Useful Prisma commands
+
+```bash
+# Open Prisma Studio (visual DB browser)
+npx prisma studio
+
+# Create a new migration after schema changes
+npx prisma migrate dev --name your_migration_name
+
+# Reset database (drops all data)
+npx prisma migrate reset
+
+# Generate client after schema changes
+npx prisma generate
+```
+
+---
+
+## Running the App
+
+```bash
+# Development (watch mode)
+npm run start:dev
+
+# Production build
+npm run build
+npm run start:prod
+
+# Debug mode
+npm run start:debug
+```
+
+---
+
+## API Routes
+
+All routes are prefixed with `/api`. Protected routes require a Bearer token (see [Authentication](#authentication)).
+
+### Public
+
+| Method | Endpoint          | Description  |
+| ------ | ----------------- | ------------ |
+| `GET`  | `/api`            | Health check |
+| `POST` | `/api/auth/login` | Admin login  |
+
+### Protected (require JWT)
+
+| Method   | Endpoint               | Description                 |
+| -------- | ---------------------- | --------------------------- |
+| `GET`    | `/api/users`           | List all admin users        |
+| `POST`   | `/api/users`           | Create admin user           |
+| `GET`    | `/api/users/:id`       | Get user by ID              |
+| `PUT`    | `/api/users/:id`       | Update user                 |
+| `DELETE` | `/api/users/:id`       | Delete user                 |
+| `GET`    | `/api/customers`       | List all customers          |
+| `POST`   | `/api/customers`       | Create customer             |
+| `GET`    | `/api/customers/:id`   | Get customer with relations |
+| `PUT`    | `/api/customers/:id`   | Update customer             |
+| `DELETE` | `/api/customers/:id`   | Delete customer             |
+| `GET`    | `/api/orders`          | List all orders             |
+| `POST`   | `/api/orders`          | Create order                |
+| `GET`    | `/api/orders/:id`      | Get order details           |
+| `PUT`    | `/api/orders/:id`      | Update order                |
+| `DELETE` | `/api/orders/:id`      | Delete order                |
+| `GET`    | `/api/deliveries`      | List all deliveries         |
+| `POST`   | `/api/deliveries`      | Create delivery             |
+| `GET`    | `/api/deliveries/:id`  | Get delivery details        |
+| `PUT`    | `/api/deliveries/:id`  | Update delivery             |
+| `DELETE` | `/api/deliveries/:id`  | Delete delivery             |
+| `GET`    | `/api/kg`              | List kitchen gardens        |
+| `POST`   | `/api/kg`              | Create kitchen garden       |
+| `GET`    | `/api/kg/:id`          | Get kitchen garden          |
+| `PUT`    | `/api/kg/:id`          | Update kitchen garden       |
+| `DELETE` | `/api/kg/:id`          | Delete kitchen garden       |
+| `GET`    | `/api/kg/:kgId/visits` | List visits for a garden    |
+| `POST`   | `/api/kg/:kgId/visits` | Create visit                |
+| `PUT`    | `/api/kg/visits/:id`   | Update visit                |
+| `DELETE` | `/api/kg/visits/:id`   | Delete visit                |
+| `GET`    | `/api/expenses`        | List all expenses           |
+| `POST`   | `/api/expenses`        | Create expense              |
+| `GET`    | `/api/expenses/:id`    | Get expense                 |
+| `PUT`    | `/api/expenses/:id`    | Update expense              |
+| `DELETE` | `/api/expenses/:id`    | Delete expense              |
+| `GET`    | `/api/payments`        | List all payments           |
+| `POST`   | `/api/payments`        | Create payment              |
+| `GET`    | `/api/payments/:id`    | Get payment                 |
+| `PUT`    | `/api/payments/:id`    | Update payment              |
+| `DELETE` | `/api/payments/:id`    | Delete payment              |
+
+---
+
+## Authentication
+
+The API uses **JWT Bearer tokens**.
+
+### Login
+
+```bash
+curl -X POST http://localhost:4000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@freshroot.com", "password": "admin123"}'
+```
+
+Response:
+
+```json
+{
+	"accessToken": "eyJhbGciOi...",
+	"user": {
+		"id": "...",
+		"email": "admin@freshroot.com",
+		"name": "Freshroot Admin",
+		"role": "admin"
+	}
+}
+```
+
+### Using the token
+
+Add the token to the `Authorization` header for all protected routes:
+
+```bash
+curl http://localhost:4000/api/customers \
+  -H "Authorization: Bearer eyJhbGciOi..."
+```
+
+---
+
+## Seeding the Database
+
+The seed script creates sample data including:
+
+- 1 admin user (`admin@freshroot.com` / `admin123`)
+- 3 customers with addresses
+- Subscriptions, orders, deliveries
+- Kitchen garden setups with visits
+- Expenses and payments
+
+```bash
+npm run seed
+```
+
+> **Note:** Run migrations first before seeding.
+
+---
+
+## Scripts Reference
+
+| Script        | Command               | Description                    |
+| ------------- | --------------------- | ------------------------------ |
+| `start`       | `npm run start`       | Start the app                  |
+| `start:dev`   | `npm run start:dev`   | Start in watch mode            |
+| `start:debug` | `npm run start:debug` | Start in debug + watch mode    |
+| `start:prod`  | `npm run start:prod`  | Start production build         |
+| `build`       | `npm run build`       | Compile TypeScript             |
+| `seed`        | `npm run seed`        | Seed database with sample data |
+| `lint`        | `npm run lint`        | Lint and fix code              |
+| `format`      | `npm run format`      | Format code with Prettier      |
+| `test`        | `npm run test`        | Run unit tests                 |
+| `test:e2e`    | `npm run test:e2e`    | Run end-to-end tests           |
+| `test:cov`    | `npm run test:cov`    | Run tests with coverage        |
+
+---
+
+## License
+
+This project is UNLICENSED (private).
+
 - Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
 - Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
 - To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
