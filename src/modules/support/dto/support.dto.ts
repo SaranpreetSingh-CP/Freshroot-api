@@ -20,7 +20,9 @@ export function normalizeIssueType(raw: string): string {
 		"quality-issue": "QUALITY_ISSUE",
 		other: "OTHER",
 	};
-	return map[raw?.toLowerCase()] ?? raw?.toUpperCase().replace(/-/g, "_") ?? raw;
+	return (
+		map[raw?.toLowerCase()] ?? raw?.toUpperCase().replace(/-/g, "_") ?? raw
+	);
 }
 
 export class CreateTicketDto {
