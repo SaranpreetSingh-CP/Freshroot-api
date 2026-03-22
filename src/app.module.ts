@@ -12,6 +12,7 @@ import { KitchenGardenModule } from "./modules/kitchen-garden/kitchen-garden.mod
 import { ExpensesModule } from "./modules/expenses/expenses.module.js";
 import { PaymentsModule } from "./modules/payments/payments.module.js";
 import { SubscriptionsModule } from "./modules/subscriptions/subscriptions.module.js";
+import { DashboardModule } from "./modules/dashboard/dashboard.module.js";
 
 @Module({
 	imports: [
@@ -26,6 +27,7 @@ import { SubscriptionsModule } from "./modules/subscriptions/subscriptions.modul
 		KitchenGardenModule,
 		ExpensesModule,
 		PaymentsModule,
+		DashboardModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],
