@@ -12,6 +12,15 @@ import {
 import { Type, Transform } from "class-transformer";
 
 export class OrderItemDto {
+	/** Preferred: reference a vegetable by id */
+	@IsInt()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseInt(value, 10) : value,
+	)
+	vegetableId?: number;
+
+	/** Legacy: accept name directly */
 	@IsString()
 	@IsOptional()
 	name?: string;

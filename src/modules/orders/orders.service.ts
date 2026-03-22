@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+	Injectable,
+	NotFoundException,
+	BadRequestException,
+} from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import { CreateOrderDto, UpdateOrderDto } from "./dto/index.js";
 import type { Prisma } from "../../../generated/prisma/client.js";
@@ -8,14 +12,39 @@ export class OrdersService {
 	constructor(private readonly prisma: PrismaService) {}
 
 	async create(dto: CreateOrderDto) {
-		// Normalize item names: accept both "name" and "itemName"
-		const normalizedItems = dto.items.map((item) => ({
-			name: item.name ?? item.itemName ?? "",
-			quantity: item.quantity,
-			unit: item.unit,
-		}));
+		// Resolve vegetables: if vegetableId is provided, look up and validate
+		const normalizedItems: {
+			vegetableId?: number;
+			name: string;
+			quantity: number;
+			unit: string;
+		}[] = [];
 
-		// Auto-calculate totalAmount if not provided
+		for (const item of dto.items) {
+			if (item.vegetableId) {
+				const veg = await this.prisma.vegetable.findUnique({
+					where: { id: item.vegetableId },
+				});
+				if (!veg) {
+					throw new BadRequestException(
+						`Vegetable with id ${item.vegetableId} not found`,
+					);
+				}
+				normalizedItems.push({
+					vegetableId: veg.id,
+					name: veg.name,
+					quantity: item.quantity,
+					unit: item.unit,
+				});
+			} else {
+				normalizedItems.push({
+					name: item.name ?? item.itemName ?? "",
+					quantity: item.quantity,
+					unit: item.unit,
+				});
+			}
+		}
+
 		const totalAmount = dto.totalAmount ?? 0;
 
 		return this.prisma.order.create({
