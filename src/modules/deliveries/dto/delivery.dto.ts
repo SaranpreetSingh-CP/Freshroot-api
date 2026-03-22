@@ -5,7 +5,15 @@ import {
 	IsNumber,
 	IsInt,
 	IsDateString,
+	IsIn,
 } from "class-validator";
+
+export const DELIVERY_STATUSES = [
+	"NOT_STARTED",
+	"IN_TRANSIT",
+	"OUT_FOR_DELIVERY",
+	"DELIVERED",
+] as const;
 
 export class CreateDeliveryDto {
 	@IsInt()
@@ -22,6 +30,7 @@ export class CreateDeliveryDto {
 
 	@IsString()
 	@IsOptional()
+	@IsIn(DELIVERY_STATUSES)
 	status?: string;
 
 	@IsString()
@@ -44,6 +53,7 @@ export class UpdateDeliveryDto {
 
 	@IsString()
 	@IsOptional()
+	@IsIn(DELIVERY_STATUSES)
 	status?: string;
 
 	@IsString()
@@ -53,4 +63,11 @@ export class UpdateDeliveryDto {
 	@IsString()
 	@IsOptional()
 	notes?: string;
+}
+
+export class UpdateDeliveryStatusDto {
+	@IsString()
+	@IsNotEmpty()
+	@IsIn(DELIVERY_STATUSES)
+	status: string;
 }

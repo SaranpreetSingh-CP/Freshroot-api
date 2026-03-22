@@ -124,6 +124,7 @@ model Expense {
   date        DateTime
   paidTo      String?
   receipt     String?
+  billUrl     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

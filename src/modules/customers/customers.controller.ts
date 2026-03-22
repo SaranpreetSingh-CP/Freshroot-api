@@ -2,19 +2,16 @@ import {
 	Controller,
 	Get,
 	Post,
-	Put,
+	Patch,
 	Delete,
 	Body,
 	Param,
 	ParseIntPipe,
-	UseGuards,
 } from "@nestjs/common";
 import { CustomersService } from "./customers.service.js";
 import { CreateCustomerDto, UpdateCustomerDto } from "./dto/index.js";
-import { JwtAuthGuard } from "../auth/guards/index.js";
 
 @Controller("customers")
-@UseGuards(JwtAuthGuard)
 export class CustomersController {
 	constructor(private readonly customersService: CustomersService) {}
 
@@ -33,7 +30,7 @@ export class CustomersController {
 		return this.customersService.findOne(id);
 	}
 
-	@Put(":id")
+	@Patch(":id")
 	update(
 		@Param("id", ParseIntPipe) id: number,
 		@Body() dto: UpdateCustomerDto,

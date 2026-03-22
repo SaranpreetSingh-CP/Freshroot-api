@@ -30,6 +30,10 @@ export class CreateExpenseDto {
 	@IsString()
 	@IsOptional()
 	receipt?: string;
+
+	@IsString()
+	@IsOptional()
+	billUrl?: string;
 }
 
 export class UpdateExpenseDto {
@@ -56,4 +60,8 @@ export class UpdateExpenseDto {
 	@IsString()
 	@IsOptional()
 	receipt?: string;
+
+	@IsString()
+	@IsOptional()
+	billUrl?: string;
 }

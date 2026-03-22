@@ -2,18 +2,19 @@ import {
 	Controller,
 	Get,
 	Post,
-	Put,
+	Patch,
 	Delete,
 	Body,
 	Param,
-	UseGuards,
 } from "@nestjs/common";
 import { DeliveriesService } from "./deliveries.service.js";
-import { CreateDeliveryDto, UpdateDeliveryDto } from "./dto/index.js";
-import { JwtAuthGuard } from "../auth/guards/index.js";
+import {
+	CreateDeliveryDto,
+	UpdateDeliveryDto,
+	UpdateDeliveryStatusDto,
+} from "./dto/index.js";
 
 @Controller("deliveries")
-@UseGuards(JwtAuthGuard)
 export class DeliveriesController {
 	constructor(private readonly deliveriesService: DeliveriesService) {}
 
@@ -32,9 +33,14 @@ export class DeliveriesController {
 		return this.deliveriesService.findOne(id);
 	}
 
-	@Put(":id")
+	@Patch(":id")
 	update(@Param("id") id: string, @Body() dto: UpdateDeliveryDto) {
 		return this.deliveriesService.update(id, dto);
+	}
+
+	@Patch(":id/status")
+	updateStatus(@Param("id") id: string, @Body() dto: UpdateDeliveryStatusDto) {
+		return this.deliveriesService.updateStatus(id, dto.status);
 	}
 
 	@Delete(":id")

@@ -42,6 +42,15 @@ export class DeliveriesService {
 		});
 	}
 
+	async updateStatus(id: string, status: string) {
+		await this.findOne(id);
+		return this.prisma.delivery.update({
+			where: { id },
+			data: { status },
+			include: { subscription: { include: { customer: true } } },
+		});
+	}
+
 	async remove(id: string) {
 		await this.findOne(id);
 		await this.prisma.delivery.delete({ where: { id } });

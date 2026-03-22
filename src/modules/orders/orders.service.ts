@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import { CreateOrderDto, UpdateOrderDto } from "./dto/index.js";
+import type { Prisma } from "../../../generated/prisma/client.js";
 
 @Injectable()
 export class OrdersService {
@@ -10,8 +11,10 @@ export class OrdersService {
 		return this.prisma.order.create({
 			data: {
 				...dto,
+				items: dto.items as unknown as Prisma.InputJsonValue,
 				deliveryDate: new Date(dto.deliveryDate),
 			},
+			include: { customer: true },
 		});
 	}
 
@@ -35,7 +38,20 @@ export class OrdersService {
 		await this.findOne(id);
 		const data: any = { ...dto };
 		if (dto.deliveryDate) data.deliveryDate = new Date(dto.deliveryDate);
-		return this.prisma.order.update({ where: { id }, data });
+		return this.prisma.order.update({
+			where: { id },
+			data,
+			include: { customer: true },
+		});
+	}
+
+	async updateStatus(id: string, status: string) {
+		await this.findOne(id);
+		return this.prisma.order.update({
+			where: { id },
+			data: { status },
+			include: { customer: true },
+		});
 	}
 
 	async remove(id: string) {

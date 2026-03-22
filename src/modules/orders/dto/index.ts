@@ -1,1 +1,5 @@
-export { CreateOrderDto, UpdateOrderDto } from "./order.dto.js";
+export {
+	CreateOrderDto,
+	UpdateOrderDto,
+	UpdateOrderStatusDto,
+} from "./order.dto.js";

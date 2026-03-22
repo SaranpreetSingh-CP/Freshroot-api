@@ -6,7 +6,24 @@ import {
 	IsInt,
 	IsDateString,
 	IsArray,
+	ValidateNested,
+	IsIn,
 } from "class-validator";
+import { Type } from "class-transformer";
+
+export class OrderItemDto {
+	@IsString()
+	@IsNotEmpty()
+	name: string;
+
+	@IsNumber()
+	@IsNotEmpty()
+	quantity: number;
+
+	@IsString()
+	@IsIn(["kg", "piece"])
+	unit: string;
+}
 
 export class CreateOrderDto {
 	@IsInt()
@@ -14,8 +31,9 @@ export class CreateOrderDto {
 	customerId: number;
 
 	@IsArray()
-	@IsNotEmpty()
-	items: any[]; // [{name, qty, unit, price}]
+	@ValidateNested({ each: true })
+	@Type(() => OrderItemDto)
+	items: OrderItemDto[];
 
 	@IsNumber()
 	@IsNotEmpty()
@@ -23,6 +41,7 @@ export class CreateOrderDto {
 
 	@IsString()
 	@IsOptional()
+	@IsIn(["pending", "processing", "delivered"])
 	status?: string;
 
 	@IsDateString()
@@ -40,8 +59,10 @@ export class UpdateOrderDto {
 	customerId?: number;
 
 	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => OrderItemDto)
 	@IsOptional()
-	items?: any[];
+	items?: OrderItemDto[];
 
 	@IsNumber()
 	@IsOptional()
@@ -49,6 +70,7 @@ export class UpdateOrderDto {
 
 	@IsString()
 	@IsOptional()
+	@IsIn(["pending", "processing", "delivered"])
 	status?: string;
 
 	@IsDateString()
@@ -58,4 +80,11 @@ export class UpdateOrderDto {
 	@IsString()
 	@IsOptional()
 	notes?: string;
+}
+
+export class UpdateOrderStatusDto {
+	@IsString()
+	@IsNotEmpty()
+	@IsIn(["pending", "processing", "delivered"])
+	status: string;
 }

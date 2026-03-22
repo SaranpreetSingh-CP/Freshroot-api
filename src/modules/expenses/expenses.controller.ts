@@ -2,23 +2,67 @@ import {
 	Controller,
 	Get,
 	Post,
-	Put,
+	Patch,
 	Delete,
 	Body,
 	Param,
-	UseGuards,
+	UploadedFile,
+	UseInterceptors,
+	BadRequestException,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { diskStorage } from "multer";
+import { extname } from "path";
 import { ExpensesService } from "./expenses.service.js";
-import { CreateExpenseDto, UpdateExpenseDto } from "./dto/index.js";
-import { JwtAuthGuard } from "../auth/guards/index.js";
+import { UpdateExpenseDto } from "./dto/index.js";
+
+const storage = diskStorage({
+	destination: "./uploads/expenses",
+	filename: (_req, file, cb) => {
+		const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+		cb(null, `${unique}${extname(file.originalname)}`);
+	},
+});
+
+const fileFilter = (
+	_req: any,
+	file: Express.Multer.File,
+	cb: (error: Error | null, accept: boolean) => void,
+) => {
+	const allowed = /\.(jpg|jpeg|png|gif|pdf|doc|docx)$/i;
+	if (!allowed.test(extname(file.originalname))) {
+		return cb(
+			new BadRequestException("Only images, PDFs, and docs are allowed"),
+			false,
+		);
+	}
+	cb(null, true);
+};
 
 @Controller("expenses")
-@UseGuards(JwtAuthGuard)
 export class ExpensesController {
 	constructor(private readonly expensesService: ExpensesService) {}
 
 	@Post()
-	create(@Body() dto: CreateExpenseDto) {
+	@UseInterceptors(
+		FileInterceptor("file", {
+			storage,
+			fileFilter,
+			limits: { fileSize: 10 * 1024 * 1024 },
+		}),
+	)
+	create(
+		@Body() body: Record<string, string>,
+		@UploadedFile() file?: Express.Multer.File,
+	) {
+		const dto = {
+			category: body.category,
+			description: body.description,
+			amount: parseFloat(body.amount),
+			date: body.date,
+			paidTo: body.paidTo,
+			billUrl: file ? `/uploads/expenses/${file.filename}` : undefined,
+		};
 		return this.expensesService.create(dto);
 	}
 
@@ -32,7 +76,7 @@ export class ExpensesController {
 		return this.expensesService.findOne(id);
 	}
 
-	@Put(":id")
+	@Patch(":id")
 	update(@Param("id") id: string, @Body() dto: UpdateExpenseDto) {
 		return this.expensesService.update(id, dto);
 	}

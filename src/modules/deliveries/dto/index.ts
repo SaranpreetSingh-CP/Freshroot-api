@@ -1,1 +1,5 @@
-export { CreateDeliveryDto, UpdateDeliveryDto } from "./delivery.dto.js";
+export {
+	CreateDeliveryDto,
+	UpdateDeliveryDto,
+	UpdateDeliveryStatusDto,
+} from "./delivery.dto.js";
