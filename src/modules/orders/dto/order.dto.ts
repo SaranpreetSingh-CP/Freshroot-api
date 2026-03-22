@@ -9,12 +9,16 @@ import {
 	ValidateNested,
 	IsIn,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Type, Transform } from "class-transformer";
 
 export class OrderItemDto {
 	@IsString()
-	@IsNotEmpty()
-	name: string;
+	@IsOptional()
+	name?: string;
+
+	@IsString()
+	@IsOptional()
+	itemName?: string;
 
 	@IsNumber()
 	@IsNotEmpty()
@@ -26,6 +30,9 @@ export class OrderItemDto {
 }
 
 export class CreateOrderDto {
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseInt(value, 10) : value,
+	)
 	@IsInt()
 	@IsNotEmpty()
 	customerId: number;
@@ -36,8 +43,8 @@ export class CreateOrderDto {
 	items: OrderItemDto[];
 
 	@IsNumber()
-	@IsNotEmpty()
-	totalAmount: number;
+	@IsOptional()
+	totalAmount?: number;
 
 	@IsString()
 	@IsOptional()
@@ -45,8 +52,8 @@ export class CreateOrderDto {
 	status?: string;
 
 	@IsDateString()
-	@IsNotEmpty()
-	deliveryDate: string;
+	@IsOptional()
+	deliveryDate?: string;
 
 	@IsString()
 	@IsOptional()

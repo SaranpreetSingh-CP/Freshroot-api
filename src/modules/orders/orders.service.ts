@@ -8,11 +8,26 @@ export class OrdersService {
 	constructor(private readonly prisma: PrismaService) {}
 
 	async create(dto: CreateOrderDto) {
+		// Normalize item names: accept both "name" and "itemName"
+		const normalizedItems = dto.items.map((item) => ({
+			name: item.name ?? item.itemName ?? "",
+			quantity: item.quantity,
+			unit: item.unit,
+		}));
+
+		// Auto-calculate totalAmount if not provided
+		const totalAmount = dto.totalAmount ?? 0;
+
 		return this.prisma.order.create({
 			data: {
-				...dto,
-				items: dto.items as unknown as Prisma.InputJsonValue,
-				deliveryDate: new Date(dto.deliveryDate),
+				customerId: dto.customerId,
+				items: normalizedItems as unknown as Prisma.InputJsonValue,
+				totalAmount,
+				status: dto.status ?? "pending",
+				deliveryDate: dto.deliveryDate
+					? new Date(dto.deliveryDate)
+					: new Date(),
+				notes: dto.notes,
 			},
 			include: { customer: true },
 		});
