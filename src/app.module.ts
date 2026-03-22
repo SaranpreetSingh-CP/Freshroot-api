@@ -13,6 +13,7 @@ import { ExpensesModule } from "./modules/expenses/expenses.module.js";
 import { PaymentsModule } from "./modules/payments/payments.module.js";
 import { SubscriptionsModule } from "./modules/subscriptions/subscriptions.module.js";
 import { DashboardModule } from "./modules/dashboard/dashboard.module.js";
+import { AdminModule } from "./modules/admin/admin.module.js";
 
 @Module({
 	imports: [
@@ -28,6 +29,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module.js";
 		ExpensesModule,
 		PaymentsModule,
 		DashboardModule,
+		AdminModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],
