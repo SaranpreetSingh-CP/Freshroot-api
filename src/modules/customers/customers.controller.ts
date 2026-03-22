@@ -6,6 +6,7 @@ import {
 	Delete,
 	Body,
 	Param,
+	ParseIntPipe,
 	UseGuards,
 } from "@nestjs/common";
 import { CustomersService } from "./customers.service.js";
@@ -28,17 +29,20 @@ export class CustomersController {
 	}
 
 	@Get(":id")
-	findOne(@Param("id") id: string) {
+	findOne(@Param("id", ParseIntPipe) id: number) {
 		return this.customersService.findOne(id);
 	}
 
 	@Put(":id")
-	update(@Param("id") id: string, @Body() dto: UpdateCustomerDto) {
+	update(
+		@Param("id", ParseIntPipe) id: number,
+		@Body() dto: UpdateCustomerDto,
+	) {
 		return this.customersService.update(id, dto);
 	}
 
 	@Delete(":id")
-	remove(@Param("id") id: string) {
+	remove(@Param("id", ParseIntPipe) id: number) {
 		return this.customersService.remove(id);
 	}
 }

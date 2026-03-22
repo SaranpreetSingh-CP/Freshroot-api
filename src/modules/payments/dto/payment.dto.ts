@@ -3,13 +3,14 @@ import {
 	IsOptional,
 	IsString,
 	IsNumber,
+	IsInt,
 	IsDateString,
 } from "class-validator";
 
 export class CreatePaymentDto {
-	@IsString()
+	@IsInt()
 	@IsNotEmpty()
-	customerId: string;
+	customerId: number;
 
 	@IsNumber()
 	@IsNotEmpty()

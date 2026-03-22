@@ -24,7 +24,10 @@ export class KitchenGardenService {
 
 	async findAll() {
 		return this.prisma.kitchenGarden.findMany({
-			include: { customer: true, visits: true },
+			include: {
+				subscription: { include: { customer: true } },
+				visits: true,
+			},
 			orderBy: { createdAt: "desc" },
 		});
 	}
@@ -32,7 +35,10 @@ export class KitchenGardenService {
 	async findOne(id: string) {
 		const kg = await this.prisma.kitchenGarden.findUnique({
 			where: { id },
-			include: { customer: true, visits: { orderBy: { visitDate: "desc" } } },
+			include: {
+				subscription: { include: { customer: true } },
+				visits: { orderBy: { visitDate: "desc" } },
+			},
 		});
 		if (!kg) throw new NotFoundException("Kitchen garden not found");
 		return kg;

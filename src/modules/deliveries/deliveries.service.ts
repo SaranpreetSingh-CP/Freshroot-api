@@ -8,24 +8,24 @@ export class DeliveriesService {
 
 	async create(dto: CreateDeliveryDto) {
 		const data: any = { ...dto };
-		if (dto.deliveredAt) data.deliveredAt = new Date(dto.deliveredAt);
+		data.date = new Date(dto.date);
 		return this.prisma.delivery.create({
 			data,
-			include: { order: true, address: true },
+			include: { subscription: { include: { customer: true } } },
 		});
 	}
 
 	async findAll() {
 		return this.prisma.delivery.findMany({
-			include: { order: { include: { customer: true } }, address: true },
-			orderBy: { createdAt: "desc" },
+			include: { subscription: { include: { customer: true } } },
+			orderBy: { date: "desc" },
 		});
 	}
 
 	async findOne(id: string) {
 		const delivery = await this.prisma.delivery.findUnique({
 			where: { id },
-			include: { order: { include: { customer: true } }, address: true },
+			include: { subscription: { include: { customer: true } } },
 		});
 		if (!delivery) throw new NotFoundException("Delivery not found");
 		return delivery;
@@ -34,11 +34,11 @@ export class DeliveriesService {
 	async update(id: string, dto: UpdateDeliveryDto) {
 		await this.findOne(id);
 		const data: any = { ...dto };
-		if (dto.deliveredAt) data.deliveredAt = new Date(dto.deliveredAt);
+		if (dto.date) data.date = new Date(dto.date);
 		return this.prisma.delivery.update({
 			where: { id },
 			data,
-			include: { order: true, address: true },
+			include: { subscription: { include: { customer: true } } },
 		});
 	}
 

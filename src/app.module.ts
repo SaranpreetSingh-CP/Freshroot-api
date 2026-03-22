@@ -11,6 +11,7 @@ import { DeliveriesModule } from "./modules/deliveries/deliveries.module.js";
 import { KitchenGardenModule } from "./modules/kitchen-garden/kitchen-garden.module.js";
 import { ExpensesModule } from "./modules/expenses/expenses.module.js";
 import { PaymentsModule } from "./modules/payments/payments.module.js";
+import { SubscriptionsModule } from "./modules/subscriptions/subscriptions.module.js";
 
 @Module({
 	imports: [
@@ -19,6 +20,7 @@ import { PaymentsModule } from "./modules/payments/payments.module.js";
 		AuthModule,
 		UsersModule,
 		CustomersModule,
+		SubscriptionsModule,
 		OrdersModule,
 		DeliveriesModule,
 		KitchenGardenModule,

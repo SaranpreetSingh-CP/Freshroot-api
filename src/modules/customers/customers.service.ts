@@ -12,30 +12,32 @@ export class CustomersService {
 
 	async findAll() {
 		return this.prisma.customer.findMany({
-			include: { addresses: true, subscriptions: true },
+			include: { subscriptions: true },
+			orderBy: { createdAt: "desc" },
 		});
 	}
 
-	async findOne(id: string) {
+	async findOne(id: number) {
 		const customer = await this.prisma.customer.findUnique({
 			where: { id },
 			include: {
-				addresses: true,
-				subscriptions: true,
+				subscriptions: {
+					include: { kitchenGarden: true, deliveries: true },
+				},
 				orders: true,
-				kitchenGardens: true,
+				payments: true,
 			},
 		});
 		if (!customer) throw new NotFoundException("Customer not found");
 		return customer;
 	}
 
-	async update(id: string, dto: UpdateCustomerDto) {
+	async update(id: number, dto: UpdateCustomerDto) {
 		await this.findOne(id);
 		return this.prisma.customer.update({ where: { id }, data: dto });
 	}
 
-	async remove(id: string) {
+	async remove(id: number) {
 		await this.findOne(id);
 		await this.prisma.customer.delete({ where: { id } });
 		return { message: "Customer deleted successfully" };

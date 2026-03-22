@@ -20,54 +20,47 @@ model User {
 
 // ─── Customer ───────────────────────────────────────────────────
 model Customer {
-  id             String          @id @default(uuid())
-  name           String
-  phone          String          @unique
-  email          String?         @unique
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  addresses      Address[]
-  subscriptions  Subscription[]
-  orders         Order[]
-  kitchenGardens KitchenGarden[]
-  payments       Payment[]
-}
-
-// ─── Address ────────────────────────────────────────────────────
-model Address {
-  id         String     @id @default(uuid())
-  customerId String
-  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  line1      String
-  line2      String?
-  city       String
-  state      String
-  pincode    String
-  label      String     @default("home") // home, office, other
-  isDefault  Boolean    @default(false)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  deliveries Delivery[]
+  id            Int            @id @default(autoincrement())
+  name          String
+  phone         String
+  email         String?
+  address       String
+  createdAt     DateTime       @default(now())
+  subscriptions Subscription[]
+  orders        Order[]
+  payments      Payment[]
 }
 
 // ─── Subscription ───────────────────────────────────────────────
 model Subscription {
-  id         String   @id @default(uuid())
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  plan       String   // daily, weekly, custom
-  items      Json     // array of items / quantities
-  startDate  DateTime
-  endDate    DateTime?
-  status     String   @default("active") // active, paused, cancelled
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              Int            @id @default(autoincrement())
+  customerId      Int
+  customer        Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type            String         // STF, KG, KG + STF, Land, landscape
+  package         String
+  actualPrice     Float?
+  offerPrice      Float
+  paymentTerms    String?
+  totalQuantity   Float?
+  deliveredQty    Float?
+  totalDeliveries Int?
+  deliveredBasket Int?
+  pendingKgs      Float?
+  startDate       DateTime?
+  endDate         DateTime?
+  nextRenewal     DateTime?
+  status          String         @default("active") // active, paused, expired, cancelled
+  remarks         String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deliveries      Delivery[]
+  kitchenGarden   KitchenGarden?
 }
 
 // ─── Order ──────────────────────────────────────────────────────
 model Order {
   id            String     @id @default(uuid())
-  customerId    String
+  customerId    Int
   customer      Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
   items         Json       // [{name, qty, unit, price}]
   totalAmount   Float
@@ -76,37 +69,36 @@ model Order {
   notes         String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
-  deliveries    Delivery[]
 }
 
 // ─── Delivery ───────────────────────────────────────────────────
 model Delivery {
-  id          String   @id @default(uuid())
-  orderId     String
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  addressId   String
-  address     Address  @relation(fields: [addressId], references: [id])
-  status      String   @default("scheduled") // scheduled, out_for_delivery, delivered, failed
-  deliveredAt DateTime?
-  driverName  String?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String        @id @default(uuid())
+  subscriptionId Int
+  subscription   Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  deliveredQty   Float
+  date           DateTime
+  status         String        @default("delivered") // scheduled, delivered, failed
+  driverName     String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 }
 
 // ─── Kitchen Garden (KG) ────────────────────────────────────────
 model KitchenGarden {
-  id         String    @id @default(uuid())
-  customerId String
-  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  setupDate  DateTime
-  location   String?
-  gardenSize String?   // e.g. "4x4 ft", "balcony"
-  status     String    @default("active") // active, inactive, completed
-  notes      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  visits     KGVisit[]
+  id               String        @id @default(uuid())
+  subscriptionId   Int           @unique
+  subscription     Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  setupDate        DateTime
+  location         String?
+  gardenSize       String?
+  status           String        @default("active") // active, inactive, completed
+  maintenanceCycle String?       // e.g. "monthly", "quarterly"
+  notes            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  visits           KGVisit[]
 }
 
 // ─── KG Visit ───────────────────────────────────────────────────
@@ -116,8 +108,8 @@ model KGVisit {
   kitchenGarden   KitchenGarden @relation(fields: [kitchenGardenId], references: [id], onDelete: Cascade)
   visitDate       DateTime
   workDone        String
-  healthStatus    String?  // good, needs_attention, critical
-  photos          Json?    // array of photo URLs
+  healthStatus    String?
+  photos          Json?
   notes           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -126,12 +118,12 @@ model KGVisit {
 // ─── Expense ────────────────────────────────────────────────────
 model Expense {
   id          String   @id @default(uuid())
-  category    String   // seeds, fertilizer, transport, labour, packaging, other
+  category    String
   description String
   amount      Float
   date        DateTime
   paidTo      String?
-  receipt     String?  // URL to receipt image
+  receipt     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -139,12 +131,12 @@ model Expense {
 // ─── Payment ────────────────────────────────────────────────────
 model Payment {
   id         String   @id @default(uuid())
-  customerId String
+  customerId Int
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   amount     Float
-  method     String   @default("cash") // cash, upi, bank_transfer, card
-  status     String   @default("completed") // completed, pending, failed, refunded
-  reference  String?  // UPI ref / txn id
+  method     String   @default("cash")
+  status     String   @default("completed")
+  reference  String?
   date       DateTime
   notes      String?
   createdAt  DateTime @default(now())

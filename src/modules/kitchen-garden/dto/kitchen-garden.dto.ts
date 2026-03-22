@@ -2,14 +2,15 @@ import {
 	IsNotEmpty,
 	IsOptional,
 	IsString,
+	IsInt,
 	IsDateString,
 	IsArray,
 } from "class-validator";
 
 export class CreateKitchenGardenDto {
-	@IsString()
+	@IsInt()
 	@IsNotEmpty()
-	customerId: string;
+	subscriptionId: number;
 
 	@IsDateString()
 	@IsNotEmpty()
@@ -26,6 +27,10 @@ export class CreateKitchenGardenDto {
 	@IsString()
 	@IsOptional()
 	status?: string;
+
+	@IsString()
+	@IsOptional()
+	maintenanceCycle?: string;
 
 	@IsString()
 	@IsOptional()
@@ -48,6 +53,10 @@ export class UpdateKitchenGardenDto {
 	@IsString()
 	@IsOptional()
 	status?: string;
+
+	@IsString()
+	@IsOptional()
+	maintenanceCycle?: string;
 
 	@IsString()
 	@IsOptional()

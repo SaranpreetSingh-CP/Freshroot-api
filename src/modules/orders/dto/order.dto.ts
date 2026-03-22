@@ -3,14 +3,15 @@ import {
 	IsOptional,
 	IsString,
 	IsNumber,
+	IsInt,
 	IsDateString,
 	IsArray,
 } from "class-validator";
 
 export class CreateOrderDto {
-	@IsString()
+	@IsInt()
 	@IsNotEmpty()
-	customerId: string;
+	customerId: number;
 
 	@IsArray()
 	@IsNotEmpty()
@@ -34,9 +35,9 @@ export class CreateOrderDto {
 }
 
 export class UpdateOrderDto {
-	@IsString()
+	@IsInt()
 	@IsOptional()
-	customerId?: string;
+	customerId?: number;
 
 	@IsArray()
 	@IsOptional()

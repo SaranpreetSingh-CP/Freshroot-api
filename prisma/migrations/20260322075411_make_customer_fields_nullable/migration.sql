@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "Customer" ALTER COLUMN "actualPrice" DROP NOT NULL,
+ALTER COLUMN "deliveredBasket" DROP NOT NULL,
+ALTER COLUMN "deliveredQty" DROP NOT NULL,
+ALTER COLUMN "paymentTerms" DROP NOT NULL,
+ALTER COLUMN "pendingKgs" DROP NOT NULL,
+ALTER COLUMN "totalDeliveries" DROP NOT NULL,
+ALTER COLUMN "totalQuantity" DROP NOT NULL;

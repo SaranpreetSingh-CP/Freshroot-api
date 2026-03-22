@@ -2,25 +2,27 @@ import {
 	IsNotEmpty,
 	IsOptional,
 	IsString,
+	IsNumber,
+	IsInt,
 	IsDateString,
 } from "class-validator";
 
 export class CreateDeliveryDto {
-	@IsString()
+	@IsInt()
 	@IsNotEmpty()
-	orderId: string;
+	subscriptionId: number;
 
-	@IsString()
+	@IsNumber()
 	@IsNotEmpty()
-	addressId: string;
+	deliveredQty: number;
+
+	@IsDateString()
+	@IsNotEmpty()
+	date: string;
 
 	@IsString()
 	@IsOptional()
 	status?: string;
-
-	@IsDateString()
-	@IsOptional()
-	deliveredAt?: string;
 
 	@IsString()
 	@IsOptional()
@@ -32,13 +34,17 @@ export class CreateDeliveryDto {
 }
 
 export class UpdateDeliveryDto {
-	@IsString()
+	@IsNumber()
 	@IsOptional()
-	status?: string;
+	deliveredQty?: number;
 
 	@IsDateString()
 	@IsOptional()
-	deliveredAt?: string;
+	date?: string;
+
+	@IsString()
+	@IsOptional()
+	status?: string;
 
 	@IsString()
 	@IsOptional()
