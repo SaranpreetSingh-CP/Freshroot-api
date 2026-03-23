@@ -1,1 +1,6 @@
-export { CreateCustomerDto, UpdateCustomerDto } from "./customer.dto.js";
+export {
+	CreateCustomerDto,
+	UpdateCustomerDto,
+	NestedCreateSubscriptionDto,
+	NestedUpdateSubscriptionDto,
+} from "./customer.dto.js";

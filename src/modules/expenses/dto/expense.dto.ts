@@ -1,9 +1,11 @@
+import { Transform } from "class-transformer";
 import {
 	IsNotEmpty,
 	IsOptional,
 	IsString,
 	IsNumber,
 	IsDateString,
+	Min,
 } from "class-validator";
 
 export class CreateExpenseDto {
@@ -45,7 +47,9 @@ export class UpdateExpenseDto {
 	@IsOptional()
 	description?: string;
 
+	@Transform(({ value }) => (value != null ? Number(value) : undefined))
 	@IsNumber()
+	@Min(0, { message: "amount must be greater than 0" })
 	@IsOptional()
 	amount?: number;
 

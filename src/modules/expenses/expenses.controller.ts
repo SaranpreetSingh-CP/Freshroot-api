@@ -77,7 +77,25 @@ export class ExpensesController {
 	}
 
 	@Patch(":id")
-	update(@Param("id") id: string, @Body() dto: UpdateExpenseDto) {
+	@UseInterceptors(
+		FileInterceptor("file", {
+			storage,
+			fileFilter,
+			limits: { fileSize: 10 * 1024 * 1024 },
+		}),
+	)
+	update(
+		@Param("id") id: string,
+		@Body() body: Record<string, string>,
+		@UploadedFile() file?: Express.Multer.File,
+	) {
+		const dto: UpdateExpenseDto = {};
+		if (body.category !== undefined) dto.category = body.category;
+		if (body.description !== undefined) dto.description = body.description;
+		if (body.amount !== undefined) dto.amount = parseFloat(body.amount);
+		if (body.date !== undefined) dto.date = body.date;
+		if (body.paidTo !== undefined) dto.paidTo = body.paidTo;
+		if (file) dto.billUrl = `/uploads/expenses/${file.filename}`;
 		return this.expensesService.update(id, dto);
 	}
 

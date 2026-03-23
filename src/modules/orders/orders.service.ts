@@ -4,23 +4,27 @@ import {
 	BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service.js";
-import { CreateOrderDto, UpdateOrderDto } from "./dto/index.js";
+import {
+	CreateOrderDto,
+	UpdateOrderDto,
+	normalizeOrderStatus,
+} from "./dto/index.js";
 import type { Prisma } from "../../../generated/prisma/client.js";
 
 @Injectable()
 export class OrdersService {
 	constructor(private readonly prisma: PrismaService) {}
 
-	async create(dto: CreateOrderDto) {
-		// Resolve vegetables: if vegetableId is provided, look up and validate
-		const normalizedItems: {
+	/** Resolve & validate items — look up vegetableId if provided */
+	private async resolveItems(items: CreateOrderDto["items"]) {
+		const resolved: {
 			vegetableId?: number;
 			name: string;
 			quantity: number;
 			unit: string;
 		}[] = [];
 
-		for (const item of dto.items) {
+		for (const item of items) {
 			if (item.vegetableId) {
 				const veg = await this.prisma.vegetable.findUnique({
 					where: { id: item.vegetableId },
@@ -30,29 +34,34 @@ export class OrdersService {
 						`Vegetable with id ${item.vegetableId} not found`,
 					);
 				}
-				normalizedItems.push({
+				resolved.push({
 					vegetableId: veg.id,
-					name: veg.name,
+					name: item.name ?? veg.name,
 					quantity: item.quantity,
 					unit: item.unit,
 				});
 			} else {
-				normalizedItems.push({
+				resolved.push({
 					name: item.name ?? item.itemName ?? "",
 					quantity: item.quantity,
 					unit: item.unit,
 				});
 			}
 		}
+		return resolved;
+	}
 
-		const totalAmount = dto.totalAmount ?? 0;
+	async create(dto: CreateOrderDto) {
+		const normalizedItems = await this.resolveItems(dto.items);
+		const totalAmount = dto.total ?? dto.totalAmount ?? 0;
+		const status = normalizeOrderStatus(dto.status) ?? "PENDING";
 
 		return this.prisma.order.create({
 			data: {
 				customerId: dto.customerId,
 				items: normalizedItems as unknown as Prisma.InputJsonValue,
 				totalAmount,
-				status: dto.status ?? "pending",
+				status,
 				deliveryDate: dto.deliveryDate
 					? new Date(dto.deliveryDate)
 					: new Date(),
@@ -80,8 +89,24 @@ export class OrdersService {
 
 	async update(id: string, dto: UpdateOrderDto) {
 		await this.findOne(id);
-		const data: any = { ...dto };
+
+		const data: any = {};
+
+		if (dto.customerId != null) data.customerId = dto.customerId;
+		if (dto.notes !== undefined) data.notes = dto.notes;
 		if (dto.deliveryDate) data.deliveryDate = new Date(dto.deliveryDate);
+		if (dto.status) data.status = normalizeOrderStatus(dto.status);
+
+		// Handle total / totalAmount
+		const total = dto.total ?? dto.totalAmount;
+		if (total != null) data.totalAmount = total;
+
+		// Handle items update with validation
+		if (dto.items) {
+			const resolvedItems = await this.resolveItems(dto.items);
+			data.items = resolvedItems as unknown as Prisma.InputJsonValue;
+		}
+
 		return this.prisma.order.update({
 			where: { id },
 			data,
@@ -91,9 +116,10 @@ export class OrdersService {
 
 	async updateStatus(id: string, status: string) {
 		await this.findOne(id);
+		const normalized = normalizeOrderStatus(status) ?? status;
 		return this.prisma.order.update({
 			where: { id },
-			data: { status },
+			data: { status: normalized },
 			include: { customer: true },
 		});
 	}

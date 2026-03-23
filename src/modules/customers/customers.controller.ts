@@ -25,6 +25,11 @@ export class CustomersController {
 		return this.customersService.findAll();
 	}
 
+	@Get(":id/details")
+	getDetails(@Param("id", ParseIntPipe) id: number) {
+		return this.customersService.getCustomerDetails(id);
+	}
+
 	@Get(":id")
 	findOne(@Param("id", ParseIntPipe) id: number) {
 		return this.customersService.findOne(id);

@@ -11,6 +11,30 @@ import {
 } from "class-validator";
 import { Type, Transform } from "class-transformer";
 
+export const ORDER_STATUSES = [
+	"PENDING",
+	"CONFIRMED",
+	"PROCESSING",
+	"DELIVERED",
+	"CANCELLED",
+] as const;
+
+/** Normalize legacy lowercase / mixed-case status to uppercase */
+export function normalizeOrderStatus(raw?: string): string | undefined {
+	if (!raw) return undefined;
+	const upper = raw.toUpperCase();
+	const map: Record<string, string> = {
+		PENDING: "PENDING",
+		CONFIRMED: "CONFIRMED",
+		PROCESSING: "PROCESSING",
+		DELIVERED: "DELIVERED",
+		CANCELLED: "CANCELLED",
+		// legacy lowercase aliases
+		DISPATCHED: "PROCESSING",
+	};
+	return map[upper] ?? upper;
+}
+
 export class OrderItemDto {
 	/** Preferred: reference a vegetable by id */
 	@IsInt()
@@ -20,7 +44,7 @@ export class OrderItemDto {
 	)
 	vegetableId?: number;
 
-	/** Legacy: accept name directly */
+	/** Accept name directly */
 	@IsString()
 	@IsOptional()
 	name?: string;
@@ -31,11 +55,14 @@ export class OrderItemDto {
 
 	@IsNumber()
 	@IsNotEmpty()
-	quantity: number;
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	quantity!: number;
 
 	@IsString()
 	@IsIn(["kg", "piece"])
-	unit: string;
+	unit!: string;
 }
 
 export class CreateOrderDto {
@@ -44,20 +71,34 @@ export class CreateOrderDto {
 	)
 	@IsInt()
 	@IsNotEmpty()
-	customerId: number;
+	customerId!: number;
 
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => OrderItemDto)
-	items: OrderItemDto[];
+	items!: OrderItemDto[];
+
+	/** Accept both "total" and "totalAmount" */
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	total?: number;
 
 	@IsNumber()
 	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
 	totalAmount?: number;
 
 	@IsString()
 	@IsOptional()
-	@IsIn(["pending", "processing", "delivered"])
+	@Transform(({ value }) =>
+		typeof value === "string" ? value.toUpperCase() : value,
+	)
+	@IsIn(ORDER_STATUSES as unknown as string[])
 	status?: string;
 
 	@IsDateString()
@@ -72,6 +113,9 @@ export class CreateOrderDto {
 export class UpdateOrderDto {
 	@IsInt()
 	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseInt(value, 10) : value,
+	)
 	customerId?: number;
 
 	@IsArray()
@@ -82,11 +126,24 @@ export class UpdateOrderDto {
 
 	@IsNumber()
 	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	total?: number;
+
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
 	totalAmount?: number;
 
 	@IsString()
 	@IsOptional()
-	@IsIn(["pending", "processing", "delivered"])
+	@Transform(({ value }) =>
+		typeof value === "string" ? value.toUpperCase() : value,
+	)
+	@IsIn(ORDER_STATUSES as unknown as string[])
 	status?: string;
 
 	@IsDateString()
@@ -101,6 +158,9 @@ export class UpdateOrderDto {
 export class UpdateOrderStatusDto {
 	@IsString()
 	@IsNotEmpty()
-	@IsIn(["pending", "processing", "delivered"])
-	status: string;
+	@Transform(({ value }) =>
+		typeof value === "string" ? value.toUpperCase() : value,
+	)
+	@IsIn(ORDER_STATUSES as unknown as string[])
+	status!: string;
 }

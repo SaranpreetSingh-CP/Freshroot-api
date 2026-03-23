@@ -63,9 +63,9 @@ model Order {
   id            String     @id @default(uuid())
   customerId    Int
   customer      Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  items         Json       // [{name, qty, unit, price}]
+  items         Json       // [{vegetableId?, name, quantity, unit}]
   totalAmount   Float
-  status        String     @default("pending") // pending, confirmed, dispatched, delivered, cancelled
+  status        String     @default("PENDING") // PENDING, CONFIRMED, PROCESSING, DELIVERED, CANCELLED
   deliveryDate  DateTime
   notes         String?
   createdAt     DateTime   @default(now())
