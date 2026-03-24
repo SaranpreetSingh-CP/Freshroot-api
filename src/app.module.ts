@@ -16,6 +16,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module.js";
 import { AdminModule } from "./modules/admin/admin.module.js";
 import { SupportModule } from "./modules/support/support.module.js";
 import { VegetablesModule } from "./modules/vegetables/vegetables.module.js";
+import { PricingModule } from "./modules/pricing/pricing.module.js";
 
 @Module({
 	imports: [
@@ -34,6 +35,7 @@ import { VegetablesModule } from "./modules/vegetables/vegetables.module.js";
 		AdminModule,
 		SupportModule,
 		VegetablesModule,
+		PricingModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],

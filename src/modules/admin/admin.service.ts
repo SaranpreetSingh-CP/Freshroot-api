@@ -5,6 +5,76 @@ import { PrismaService } from "../../prisma/prisma.service.js";
 export class AdminService {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/** Format raw JSON items into a readable comma-separated string */
+	private formatItems(items: unknown): string {
+		const arr = items as { name?: string; quantity?: number; unit?: string }[];
+		if (!Array.isArray(arr) || arr.length === 0) return "";
+		return arr
+			.map((i) =>
+				`${i.name ?? "Item"} (${i.quantity ?? ""} ${i.unit ?? ""})`.trim(),
+			)
+			.join(", ");
+	}
+
+	/**
+	 * Upcoming deliveries: all orders with deliveryDate >= start of today.
+	 */
+	async getUpcomingDeliveries() {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+
+		const orders = await this.prisma.order.findMany({
+			where: { deliveryDate: { gte: today } },
+			include: { customer: { select: { name: true, phone: true } } },
+			orderBy: { deliveryDate: "asc" },
+		});
+
+		return orders.map((o) => ({
+			id: o.id,
+			customerName: o.customer.name,
+			phone: o.customer.phone,
+			items: this.formatItems(o.items),
+			total: o.totalAmount,
+			date: o.deliveryDate,
+			status: o.status,
+		}));
+	}
+
+	/**
+	 * Past orders (deliveryDate < today) grouped by date, sorted DESC.
+	 */
+	async getOrdersByDate() {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+
+		const orders = await this.prisma.order.findMany({
+			where: { deliveryDate: { lt: today } },
+			include: { customer: { select: { name: true, phone: true } } },
+			orderBy: { deliveryDate: "desc" },
+		});
+
+		const grouped = new Map<string, any[]>();
+
+		for (const o of orders) {
+			const dateKey = o.deliveryDate.toISOString().slice(0, 10);
+			if (!grouped.has(dateKey)) grouped.set(dateKey, []);
+			grouped.get(dateKey)!.push({
+				id: o.id,
+				customerName: o.customer.name,
+				phone: o.customer.phone,
+				items: this.formatItems(o.items),
+				total: o.totalAmount,
+				cost: o.cost,
+				status: o.status,
+			});
+		}
+
+		return Array.from(grouped.entries()).map(([date, orders]) => ({
+			date,
+			orders,
+		}));
+	}
+
 	async getDashboard() {
 		const [
 			totalCustomers,
@@ -71,6 +141,7 @@ export class AdminService {
 					id: c.id,
 					name: c.name,
 					email: c.email,
+					phone: c.phone,
 					plan: latest?.package ?? null,
 					joined: c.createdAt,
 					status: latest?.status === "active" ? "active" : "inactive",

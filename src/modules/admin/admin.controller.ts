@@ -9,4 +9,14 @@ export class AdminController {
 	getDashboard() {
 		return this.adminService.getDashboard();
 	}
+
+	@Get("upcoming-deliveries")
+	getUpcomingDeliveries() {
+		return this.adminService.getUpcomingDeliveries();
+	}
+
+	@Get("orders-by-date")
+	getOrdersByDate() {
+		return this.adminService.getOrdersByDate();
+	}
 }

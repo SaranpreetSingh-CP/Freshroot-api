@@ -30,6 +30,8 @@ model Customer {
   orders          Order[]
   payments        Payment[]
   supportTickets  SupportTicket[]
+
+  @@unique([phone, email])
 }
 
 // ─── Subscription ───────────────────────────────────────────────
@@ -65,6 +67,7 @@ model Order {
   customer      Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
   items         Json       // [{vegetableId?, name, quantity, unit}]
   totalAmount   Float
+  cost          Float?     // calculated from vegetable prices
   status        String     @default("PENDING") // PENDING, CONFIRMED, PROCESSING, DELIVERED, CANCELLED
   deliveryDate  DateTime
   notes         String?
@@ -182,6 +185,7 @@ model Vegetable {
   unit         String                    @default("kg") // kg, piece
   createdAt    DateTime                  @default(now())
   availability VegetableAvailability[]
+  prices       VegetablePrice[]
 }
 
 // ─── Vegetable Availability ─────────────────────────────────────
@@ -192,4 +196,15 @@ model VegetableAvailability {
   month       Int       // 1-12
 
   @@unique([vegetableId, month])
+}
+
+// ─── Vegetable Price ────────────────────────────────────────────
+model VegetablePrice {
+  id          Int       @id @default(autoincrement())
+  vegetableId Int
+  vegetable   Vegetable @relation(fields: [vegetableId], references: [id], onDelete: Cascade)
+  price       Float
+  date        DateTime
+
+  @@unique([vegetableId, date])
 }
