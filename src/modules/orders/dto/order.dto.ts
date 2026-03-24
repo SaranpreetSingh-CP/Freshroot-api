@@ -131,6 +131,11 @@ export class CreateOrderDto {
 	@IsOptional()
 	deliveryDate?: string;
 
+	/** Alias: accept "date" as well */
+	@IsDateString()
+	@IsOptional()
+	date?: string;
+
 	@IsString()
 	@IsOptional()
 	notes?: string;
@@ -175,6 +180,11 @@ export class UpdateOrderDto {
 	@IsDateString()
 	@IsOptional()
 	deliveryDate?: string;
+
+	/** Alias: accept "date" as well */
+	@IsDateString()
+	@IsOptional()
+	date?: string;
 
 	@IsString()
 	@IsOptional()

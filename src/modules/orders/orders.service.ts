@@ -57,15 +57,17 @@ export class OrdersService {
 		const totalAmount = dto.total ?? dto.totalAmount ?? 0;
 		const status = normalizeOrderStatus(dto.status) ?? "PENDING";
 
+		// Accept both "date" and "deliveryDate"; normalize to start-of-day
+		const deliveryDate = new Date(dto.date ?? dto.deliveryDate ?? new Date());
+		deliveryDate.setHours(0, 0, 0, 0);
+
 		return this.prisma.order.create({
 			data: {
 				customerId: dto.customerId,
 				items: normalizedItems as unknown as Prisma.InputJsonValue,
 				totalAmount,
 				status,
-				deliveryDate: dto.deliveryDate
-					? new Date(dto.deliveryDate)
-					: new Date(),
+				deliveryDate,
 				notes: dto.notes,
 			},
 			include: { customer: true },
@@ -103,7 +105,15 @@ export class OrdersService {
 
 		if (dto.customerId != null) data.customerId = dto.customerId;
 		if (dto.notes !== undefined) data.notes = dto.notes;
-		if (dto.deliveryDate) data.deliveryDate = new Date(dto.deliveryDate);
+
+		// Accept both "date" and "deliveryDate"; normalize to start-of-day
+		const rawDate = dto.date ?? dto.deliveryDate;
+		if (rawDate) {
+			const d = new Date(rawDate);
+			d.setHours(0, 0, 0, 0);
+			data.deliveryDate = d;
+		}
+
 		if (dto.status) data.status = normalizeOrderStatus(dto.status);
 
 		// Handle total / totalAmount
