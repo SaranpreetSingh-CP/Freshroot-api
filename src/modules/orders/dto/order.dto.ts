@@ -17,6 +17,7 @@ export const ORDER_STATUSES = [
 	"PROCESSING",
 	"DELIVERED",
 	"CANCELLED",
+	"MISSED",
 ] as const;
 
 /** Normalize legacy lowercase / mixed-case status to uppercase */
@@ -29,10 +30,35 @@ export function normalizeOrderStatus(raw?: string): string | undefined {
 		PROCESSING: "PROCESSING",
 		DELIVERED: "DELIVERED",
 		CANCELLED: "CANCELLED",
+		MISSED: "MISSED",
 		// legacy lowercase aliases
 		DISPATCHED: "PROCESSING",
 	};
 	return map[upper] ?? upper;
+}
+
+/**
+ * Compute the effective status for display.
+ * A delivery is MISSED if deliveryDate < today and status is not DELIVERED/CANCELLED.
+ * MISSED is never stored in DB — always derived.
+ */
+export function getComputedStatus(order: {
+	deliveryDate: Date | string;
+	status: string;
+}): string {
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	const delivery = new Date(order.deliveryDate);
+	delivery.setHours(0, 0, 0, 0);
+
+	if (
+		delivery < today &&
+		order.status !== "DELIVERED" &&
+		order.status !== "CANCELLED"
+	) {
+		return "MISSED";
+	}
+	return order.status;
 }
 
 export class OrderItemDto {

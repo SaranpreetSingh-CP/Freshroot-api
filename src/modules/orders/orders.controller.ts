@@ -43,6 +43,11 @@ export class OrdersController {
 		return this.ordersService.updateStatus(id, dto.status);
 	}
 
+	@Patch(":id/mark-delivered")
+	markDelivered(@Param("id") id: string) {
+		return this.ordersService.markDelivered(id);
+	}
+
 	@Delete(":id")
 	remove(@Param("id") id: string) {
 		return this.ordersService.remove(id);

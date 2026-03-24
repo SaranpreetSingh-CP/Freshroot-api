@@ -4,4 +4,5 @@ export {
 	UpdateOrderStatusDto,
 	ORDER_STATUSES,
 	normalizeOrderStatus,
+	getComputedStatus,
 } from "./order.dto.js";

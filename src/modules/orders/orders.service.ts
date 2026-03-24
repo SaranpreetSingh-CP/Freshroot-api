@@ -8,6 +8,7 @@ import {
 	CreateOrderDto,
 	UpdateOrderDto,
 	normalizeOrderStatus,
+	getComputedStatus,
 } from "./dto/index.js";
 import type { Prisma } from "../../../generated/prisma/client.js";
 
@@ -71,11 +72,19 @@ export class OrdersService {
 		});
 	}
 
+	/** Attach computedStatus to an order */
+	private withComputedStatus<T extends { deliveryDate: Date; status: string }>(
+		order: T,
+	) {
+		return { ...order, computedStatus: getComputedStatus(order) };
+	}
+
 	async findAll() {
-		return this.prisma.order.findMany({
+		const orders = await this.prisma.order.findMany({
 			include: { customer: true },
 			orderBy: { createdAt: "desc" },
 		});
+		return orders.map((o) => this.withComputedStatus(o));
 	}
 
 	async findOne(id: string) {
@@ -84,7 +93,7 @@ export class OrdersService {
 			include: { customer: true },
 		});
 		if (!order) throw new NotFoundException("Order not found");
-		return order;
+		return this.withComputedStatus(order);
 	}
 
 	async update(id: string, dto: UpdateOrderDto) {
@@ -128,5 +137,24 @@ export class OrdersService {
 		await this.findOne(id);
 		await this.prisma.order.delete({ where: { id } });
 		return { message: "Order deleted successfully" };
+	}
+
+	/**
+	 * Mark an order as DELIVERED and set deliveredAt timestamp.
+	 */
+	async markDelivered(id: string) {
+		const order = await this.prisma.order.findUnique({ where: { id } });
+		if (!order) throw new NotFoundException("Order not found");
+
+		const updated = await this.prisma.order.update({
+			where: { id },
+			data: {
+				status: "DELIVERED",
+				deliveredAt: new Date(),
+			},
+			include: { customer: true },
+		});
+
+		return this.withComputedStatus(updated);
 	}
 }

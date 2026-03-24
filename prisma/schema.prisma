@@ -68,8 +68,9 @@ model Order {
   items         Json       // [{vegetableId?, name, quantity, unit}]
   totalAmount   Float
   cost          Float?     // calculated from vegetable prices
-  status        String     @default("PENDING") // PENDING, CONFIRMED, PROCESSING, DELIVERED, CANCELLED
+  status        String     @default("PENDING") // PENDING, CONFIRMED, PROCESSING, DELIVERED, CANCELLED, MISSED (computed only)
   deliveryDate  DateTime
+  deliveredAt   DateTime?  // set when marked as delivered
   notes         String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt

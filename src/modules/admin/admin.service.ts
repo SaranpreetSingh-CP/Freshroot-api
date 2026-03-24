@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service.js";
+import { getComputedStatus } from "../orders/dto/index.js";
 
 @Injectable()
 export class AdminService {
@@ -37,6 +38,7 @@ export class AdminService {
 			total: o.totalAmount,
 			date: o.deliveryDate,
 			status: o.status,
+			computedStatus: getComputedStatus(o),
 		}));
 	}
 
@@ -66,6 +68,7 @@ export class AdminService {
 				total: o.totalAmount,
 				cost: o.cost,
 				status: o.status,
+				computedStatus: getComputedStatus(o),
 			});
 		}
 
@@ -155,6 +158,7 @@ export class AdminService {
 				total: o.totalAmount,
 				date: o.deliveryDate,
 				status: o.status,
+				computedStatus: getComputedStatus(o),
 			})),
 
 			expenses: expenses.map((e) => ({
