@@ -21,7 +21,7 @@ async function main() {
 			deliveryDate: new Date("2026-03-10"),
 		},
 		{
-			customerId: 29, // Saranpreet Singh
+			customerId: 2, // Smita Periwal
 			items: [
 				{ vegetableId: 4, name: "Broccoli", quantity: 2, unit: "piece" },
 				{ vegetableId: 7, name: "Peas", quantity: 1, unit: "kg" },
@@ -44,7 +44,7 @@ async function main() {
 
 		// March 12, 2026
 		{
-			customerId: 3, // Alka Gupta
+			customerId: 3, // Sukriti Taneja
 			items: [
 				{ vegetableId: 14, name: "Mushroom", quantity: 0.5, unit: "kg" },
 				{ vegetableId: 1, name: "Spinach", quantity: 1, unit: "kg" },
@@ -55,7 +55,7 @@ async function main() {
 			deliveryDate: new Date("2026-03-12"),
 		},
 		{
-			customerId: 5, // Rashmi Rekha Mahanta
+			customerId: 5, // Ruchi Jain
 			items: [
 				{ vegetableId: 15, name: "Tomato", quantity: 2, unit: "kg" },
 				{ vegetableId: 20, name: "Okra", quantity: 0.5, unit: "kg" },
@@ -68,7 +68,7 @@ async function main() {
 
 		// March 15, 2026
 		{
-			customerId: 10, // Seema Vig
+			customerId: 10, // Naresh
 			items: [
 				{ vegetableId: 3, name: "Fenugreek", quantity: 1, unit: "kg" },
 				{ vegetableId: 12, name: "Beetroot", quantity: 1, unit: "kg" },
@@ -79,7 +79,7 @@ async function main() {
 			deliveryDate: new Date("2026-03-15"),
 		},
 		{
-			customerId: 15, // Anu Bhardwaj
+			customerId: 15, // Reema Bansal
 			items: [
 				{ vegetableId: 5, name: "Cabbage", quantity: 1, unit: "piece" },
 				{ vegetableId: 7, name: "Peas", quantity: 2, unit: "kg" },
@@ -103,7 +103,7 @@ async function main() {
 
 		// March 18, 2026
 		{
-			customerId: 20, // Neeraj Kumar
+			customerId: 20, // Gunjan Batra
 			items: [
 				{ vegetableId: 1, name: "Spinach", quantity: 1.5, unit: "kg" },
 				{ vegetableId: 15, name: "Tomato", quantity: 2, unit: "kg" },
@@ -128,7 +128,7 @@ async function main() {
 
 		// March 20, 2026
 		{
-			customerId: 29, // Saranpreet Singh
+			customerId: 12, // Suprateek Roy
 			items: [
 				{ vegetableId: 11, name: "Carrot", quantity: 2, unit: "kg" },
 				{ vegetableId: 12, name: "Beetroot", quantity: 1, unit: "kg" },
@@ -139,7 +139,7 @@ async function main() {
 			deliveryDate: new Date("2026-03-20"),
 		},
 		{
-			customerId: 7, // Kanta Manchanda
+			customerId: 7, // Kshamata Yadav
 			items: [
 				{ vegetableId: 17, name: "Bottle Gourd", quantity: 1, unit: "piece" },
 				{ vegetableId: 20, name: "Okra", quantity: 1, unit: "kg" },

@@ -211,3 +211,16 @@ model VegetablePrice {
 
   @@unique([vegetableId, date])
 }
+
+// ─── Lead / Quote Request ───────────────────────────────────────
+model Lead {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  email     String?
+  areaSize  String?  // e.g. "200 sq ft"
+  planType  String?  // grow bag / land area
+  message   String?
+  status    String   @default("NEW") // NEW, CONTACTED, CONVERTED
+  createdAt DateTime @default(now())
+}

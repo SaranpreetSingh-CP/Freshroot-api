@@ -18,6 +18,7 @@ import { SupportModule } from "./modules/support/support.module.js";
 import { VegetablesModule } from "./modules/vegetables/vegetables.module.js";
 import { PricingModule } from "./modules/pricing/pricing.module.js";
 import { AnalyticsModule } from "./modules/analytics/analytics.module.js";
+import { LeadsModule } from "./modules/leads/leads.module.js";
 
 @Module({
 	imports: [
@@ -38,6 +39,7 @@ import { AnalyticsModule } from "./modules/analytics/analytics.module.js";
 		VegetablesModule,
 		PricingModule,
 		AnalyticsModule,
+		LeadsModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],
