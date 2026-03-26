@@ -869,6 +869,91 @@ async function main() {
 	});
 	console.log(`✅ Created payments`);
 
+	// ─── Random Plans + Vegetable Limits ──────────────────────
+	const planTypes = ["STF", "Kitchen Garden"];
+	const packageNames = [
+		"Quarterly",
+		"Monthly",
+		"50 Grow Bags",
+		"100 Grow Bags",
+	];
+	const paymentTermsList = ["50% advance", "Full payment", "Monthly billing"];
+
+	const rand = (min: number, max: number) =>
+		Math.floor(Math.random() * (max - min + 1)) + min;
+	const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+	// Piece-based vegetable IDs: Broccoli=4, Cabbage=5, Cauliflower=6, Lettuce=13, Bottle Gourd=17
+	const pieceVegIds = [4, 5, 6, 13, 17];
+	// Kg-based vegetable IDs: Spinach=1, Coriander=2, Fenugreek=3, Peas=7, Beans=8, Carrot=11
+	const kgVegIds = [1, 2, 3, 7, 8, 11];
+
+	const allCustomerIds = Object.values(c).map((cust) => cust.id);
+
+	let planCount = 0;
+	for (const custId of allCustomerIds) {
+		// ~70% of customers get a plan
+		if (Math.random() > 0.7) continue;
+
+		const totalQty = rand(50, 150);
+		const planType = pick(planTypes);
+
+		// Update subscription pricing if one exists
+		const existingSub = await prisma.subscription.findFirst({
+			where: { customerId: custId },
+			orderBy: { createdAt: "desc" },
+		});
+
+		if (existingSub) {
+			const actualPrice = rand(10000, 50000);
+			await prisma.subscription.update({
+				where: { id: existingSub.id },
+				data: {
+					actualPrice,
+					offerPrice: Math.round(actualPrice * (0.75 + Math.random() * 0.2)),
+					paymentTerms: pick(paymentTermsList),
+				},
+			});
+		}
+
+		// Create plan
+		const plan = await prisma.customerPlan.create({
+			data: {
+				customerId: custId,
+				totalQty: totalQty,
+				label: planType,
+			},
+		});
+
+		// Add 2–4 random vegetable limits
+		const numLimits = rand(2, 4);
+		const selectedPiece = pieceVegIds
+			.sort(() => Math.random() - 0.5)
+			.slice(0, Math.min(rand(1, 2), numLimits));
+		const selectedKg = kgVegIds
+			.sort(() => Math.random() - 0.5)
+			.slice(0, numLimits - selectedPiece.length);
+
+		const limitsData = [
+			...selectedPiece.map((vId) => ({
+				planId: plan.id,
+				vegetableId: vId,
+				maxQtyKg: null as number | null,
+				maxQtyPiece: rand(10, 60),
+			})),
+			...selectedKg.map((vId) => ({
+				planId: plan.id,
+				vegetableId: vId,
+				maxQtyKg: rand(5, 30),
+				maxQtyPiece: null as number | null,
+			})),
+		];
+
+		await prisma.vegetableLimit.createMany({ data: limitsData });
+		planCount++;
+	}
+	console.log(`✅ Created ${planCount} customer plans with vegetable limits`);
+
 	console.log("\n🎉 Seed completed successfully!");
 }
 

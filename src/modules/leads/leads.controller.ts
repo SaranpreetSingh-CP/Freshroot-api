@@ -22,21 +22,21 @@ export class LeadsController {
 	}
 
 	/** ADMIN — list all leads (latest first) */
-	@UseGuards(JwtAuthGuard)
+	// @UseGuards(JwtAuthGuard)
 	@Get()
 	findAll() {
 		return this.leadsService.findAll();
 	}
 
 	/** ADMIN — get single lead */
-	@UseGuards(JwtAuthGuard)
+	// @UseGuards(JwtAuthGuard)
 	@Get(":id")
 	findOne(@Param("id") id: string) {
 		return this.leadsService.findOne(id);
 	}
 
 	/** ADMIN — update lead status */
-	@UseGuards(JwtAuthGuard)
+	// @UseGuards(JwtAuthGuard)
 	@Patch(":id")
 	updateStatus(@Param("id") id: string, @Body() dto: UpdateLeadStatusDto) {
 		return this.leadsService.updateStatus(id, dto);

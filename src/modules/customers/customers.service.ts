@@ -2,6 +2,7 @@ import {
 	Injectable,
 	NotFoundException,
 	ConflictException,
+	BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import { CreateCustomerDto, UpdateCustomerDto } from "./dto/index.js";
@@ -10,13 +11,15 @@ import { CreateCustomerDto, UpdateCustomerDto } from "./dto/index.js";
 export class CustomersService {
 	constructor(private readonly prisma: PrismaService) {}
 
-	/** Normalize phone (trim) and email (trim + lowercase) */
+	// ═════════════════════════════════════════════════════════════
+	// HELPERS
+	// ═════════════════════════════════════════════════════════════
+
 	private normalizeContact(data: { phone?: string; email?: string | null }) {
 		if (data.phone) data.phone = data.phone.trim();
 		if (data.email) data.email = data.email.trim().toLowerCase();
 	}
 
-	/** Check if another customer already has this phone+email combo */
 	private async checkDuplicate(
 		phone: string,
 		email: string | null | undefined,
@@ -32,7 +35,6 @@ export class CustomersService {
 		}
 	}
 
-	/** Catch Prisma unique constraint violation and return friendly error */
 	private handleUniqueError(error: any): never {
 		if (error?.code === "P2002") {
 			throw new ConflictException(
@@ -41,8 +43,13 @@ export class CustomersService {
 		}
 		throw error;
 	}
-	/** Default include for plan + vegetable limits */
-	private readonly planInclude = {
+
+	/** Standard include that pulls latest subscription, plan + limits */
+	private readonly fullInclude = {
+		subscriptions: {
+			orderBy: { createdAt: "desc" as const },
+			take: 1,
+		},
 		plans: {
 			orderBy: { createdAt: "desc" as const },
 			take: 1,
@@ -54,8 +61,9 @@ export class CustomersService {
 		},
 	};
 
-	/** Map a customer record (with plans relation) to a clean response */
+	/** Map DB record → flat API response */
 	private mapCustomerResponse(customer: any) {
+		const sub = customer.subscriptions?.[0] ?? null;
 		const plan = customer.plans?.[0] ?? null;
 
 		return {
@@ -64,111 +72,391 @@ export class CustomersService {
 			phone: customer.phone,
 			email: customer.email,
 			address: customer.address,
+			status: customer.status ?? "active",
 			createdAt: customer.createdAt,
-			plan: plan
-				? {
-						id: plan.id,
-						totalQty: plan.totalQty,
-						type: plan.label ?? null,
-					}
-				: null,
+			updatedAt: customer.updatedAt,
+
+			// Subscription
+			hasSubscription: !!sub,
+			planType: sub?.type ?? null,
+			packageName: sub?.package ?? null,
+			actualPrice: sub?.actualPrice ?? null,
+			offerPrice: sub?.offerPrice ?? null,
+			paymentTerms: sub?.paymentTerms ?? null,
+			startDate: sub?.startDate ?? customer.createdAt,
+
+			// Plan
+			totalQtyKg: plan?.totalQty ?? null,
+
+			// Vegetable limits
 			vegetableLimits: plan?.limits
 				? plan.limits.map((l: any) => ({
 						vegetableId: l.vegetableId,
 						vegetableName: l.vegetable.name,
-						limitQty:
-							l.vegetable.unit === "piece"
-								? (l.maxQtyPiece ?? 0)
-								: (l.maxQtyKg ?? 0),
 						unit: l.vegetable.unit ?? "kg",
+						maxQty:
+							(l.vegetable.unit === "piece" ? l.maxQtyPiece : l.maxQtyKg) ?? 0,
 					}))
 				: [],
 		};
 	}
+
+	/** Resolve VegetableLimitDto[] → { maxQtyKg, maxQtyPiece } per limit */
+	private resolveLimit(l: any, vegUnit?: string) {
+		// If flat "maxQty + unit" format was sent
+		if (l.maxQty != null && l.unit) {
+			return l.unit === "piece"
+				? { maxQtyKg: null, maxQtyPiece: Math.round(l.maxQty) }
+				: { maxQtyKg: l.maxQty, maxQtyPiece: null };
+		}
+		// Legacy maxQtyKg / maxQtyPiece format
+		return {
+			maxQtyKg: l.maxQtyKg ?? null,
+			maxQtyPiece: l.maxQtyPiece ?? null,
+		};
+	}
+
+	/** Validate vegetableIds exist and no duplicates */
+	private async validateLimits(limits: { vegetableId: number }[]) {
+		const ids = limits.map((l) => l.vegetableId);
+		const unique = new Set(ids);
+		if (unique.size !== ids.length) {
+			throw new BadRequestException("Duplicate vegetableId in limits");
+		}
+		const count = await this.prisma.vegetable.count({
+			where: { id: { in: ids } },
+		});
+		if (count !== ids.length) {
+			throw new BadRequestException("One or more vegetableIds do not exist");
+		}
+	}
+
+	/**
+	 * If the DTO carries a nested `subscription` object (frontend format),
+	 * merge its fields into the flat top-level fields so the rest of the
+	 * code only deals with one shape.
+	 */
+	private flattenSubscription(dto: any) {
+		if (!dto.subscription) return;
+		const sub = dto.subscription;
+		if (sub.type !== undefined && dto.planType === undefined)
+			dto.planType = sub.type;
+		if (sub.package !== undefined && dto.packageName === undefined)
+			dto.packageName = sub.package;
+		if (sub.actualPrice !== undefined && dto.actualPrice === undefined)
+			dto.actualPrice = sub.actualPrice;
+		if (sub.offerPrice !== undefined && dto.offerPrice === undefined)
+			dto.offerPrice = sub.offerPrice;
+		if (sub.paymentTerms !== undefined && dto.paymentTerms === undefined)
+			dto.paymentTerms = sub.paymentTerms;
+		if (sub.startDate !== undefined && dto.startDate === undefined)
+			dto.startDate = sub.startDate;
+		if (sub.status !== undefined && dto.status === undefined)
+			dto.status = sub.status;
+		// Ensure hasSubscription is flagged
+		if (dto.hasSubscription === undefined) dto.hasSubscription = true;
+		delete dto.subscription;
+	}
+
+	/**
+	 * If the DTO carries a nested `plan` object (frontend format),
+	 * merge plan.totalQty → totalQtyKg.
+	 */
+	private flattenPlan(dto: any) {
+		if (!dto.plan) return;
+		if (dto.plan.totalQty !== undefined && dto.totalQtyKg === undefined)
+			dto.totalQtyKg = dto.plan.totalQty;
+		delete dto.plan;
+	}
+
+	/**
+	 * Normalise limitQty → maxQty in each vegetable limit
+	 * (frontend sends limitQty, backend expects maxQty).
+	 */
+	private normalizeLimitQty(dto: any) {
+		if (!dto.vegetableLimits) return;
+		for (const l of dto.vegetableLimits) {
+			if (l.limitQty !== undefined && l.maxQty === undefined) {
+				l.maxQty = l.limitQty;
+			}
+			delete l.limitQty;
+		}
+	}
+
+	// ═════════════════════════════════════════════════════════════
+	// CREATE
+	// ═════════════════════════════════════════════════════════════
+
 	async create(dto: CreateCustomerDto) {
-		const { subscription, plan, ...customerData } = dto;
+		this.flattenSubscription(dto);
+		this.flattenPlan(dto);
+		this.normalizeLimitQty(dto);
+		const {
+			hasSubscription,
+			planType,
+			packageName,
+			actualPrice,
+			offerPrice,
+			paymentTerms,
+			startDate,
+			totalQtyKg,
+			vegetableLimits,
+			...customerData
+		} = dto;
+
 		this.normalizeContact(customerData);
 		await this.checkDuplicate(customerData.phone, customerData.email);
 
+		if (vegetableLimits?.length) {
+			await this.validateLimits(vegetableLimits);
+		}
+
 		try {
-			const result = await this.prisma.$transaction(async (tx) => {
-				const customer = await tx.customer.create({ data: customerData });
+			const customer = await this.prisma.$transaction(async (tx) => {
+				const cust = await tx.customer.create({
+					data: {
+						name: customerData.name,
+						phone: customerData.phone,
+						email: customerData.email,
+						address: customerData.address,
+						status: customerData.status ?? "active",
+					},
+				});
 
 				// ── Subscription ─────────────────────────────────
-				let sub: any = null;
-				if (subscription) {
-					const subData: any = {
-						customerId: customer.id,
-						type: subscription.type,
-						package: subscription.package,
-						offerPrice: subscription.offerPrice,
-						status: subscription.status ?? "active",
-					};
-					if (subscription.actualPrice != null)
-						subData.actualPrice = subscription.actualPrice;
-					if (subscription.paymentTerms)
-						subData.paymentTerms = subscription.paymentTerms;
-					if (subscription.totalQuantity != null)
-						subData.totalQuantity = subscription.totalQuantity;
-					if (subscription.totalDeliveries != null)
-						subData.totalDeliveries = subscription.totalDeliveries;
-					if (subscription.startDate)
-						subData.startDate = new Date(subscription.startDate);
-					if (subscription.endDate)
-						subData.endDate = new Date(subscription.endDate);
-					if (subscription.remarks) subData.remarks = subscription.remarks;
-					sub = await tx.subscription.create({ data: subData });
-				}
-
-				// ── Plan + VegetableLimits ───────────────────────
-				let createdPlan: any = null;
-				if (plan) {
-					createdPlan = await tx.customerPlan.create({
+				if (hasSubscription && planType && packageName) {
+					await tx.subscription.create({
 						data: {
-							customerId: customer.id,
-							totalQty: plan.totalQty,
-							label: plan.label,
-							...(plan.limits?.length && {
-								limits: {
-									create: plan.limits.map((l) => ({
-										vegetableId: l.vegetableId,
-										maxQtyKg: l.maxQtyKg,
-										maxQtyPiece: l.maxQtyPiece,
-									})),
-								},
-							}),
-						},
-						include: {
-							limits: { include: { vegetable: { select: { name: true } } } },
+							customerId: cust.id,
+							type: planType,
+							package: packageName,
+							actualPrice: actualPrice ?? null,
+							offerPrice: offerPrice ?? 0,
+							paymentTerms: paymentTerms ?? null,
+							startDate: startDate ? new Date(startDate) : null,
+							status: "active",
 						},
 					});
 				}
 
-				// Re-fetch full customer with plan+limits for response
-				const full = await tx.customer.findUnique({
-					where: { id: customer.id },
-					include: this.planInclude,
-				});
+				// ── Plan + limits ────────────────────────────────
+				if (totalQtyKg != null) {
+					await tx.customerPlan.create({
+						data: {
+							customerId: cust.id,
+							totalQty: totalQtyKg,
+							label: planType ?? null,
+							...(vegetableLimits?.length && {
+								limits: {
+									create: vegetableLimits.map((l) => ({
+										vegetableId: l.vegetableId,
+										...this.resolveLimit(l),
+									})),
+								},
+							}),
+						},
+					});
+				}
 
-				return { customer: full, subscription: sub, plan: createdPlan };
+				// Re-fetch with all relations
+				return tx.customer.findUnique({
+					where: { id: cust.id },
+					include: this.fullInclude,
+				});
 			});
 
-			return this.mapCustomerResponse(result.customer);
+			return this.mapCustomerResponse(customer);
 		} catch (error) {
 			this.handleUniqueError(error);
 		}
 	}
 
+	// ═════════════════════════════════════════════════════════════
+	// FIND ALL
+	// ═════════════════════════════════════════════════════════════
+
 	async findAll() {
 		const customers = await this.prisma.customer.findMany({
-			include: {
-				subscriptions: true,
-				...this.planInclude,
-			},
+			include: this.fullInclude,
 			orderBy: { createdAt: "desc" },
 		});
 		return customers.map((c) => this.mapCustomerResponse(c));
 	}
+
+	// ═════════════════════════════════════════════════════════════
+	// FIND ONE
+	// ═════════════════════════════════════════════════════════════
+
+	async findOne(id: number) {
+		const customer = await this.prisma.customer.findUnique({
+			where: { id },
+			include: this.fullInclude,
+		});
+		if (!customer) throw new NotFoundException("Customer not found");
+		return this.mapCustomerResponse(customer);
+	}
+
+	// ═════════════════════════════════════════════════════════════
+	// UPDATE
+	// ═════════════════════════════════════════════════════════════
+
+	async update(id: number, dto: UpdateCustomerDto) {
+		const existing = await this.prisma.customer.findUnique({ where: { id } });
+		if (!existing) throw new NotFoundException("Customer not found");
+
+		this.flattenSubscription(dto);
+		this.flattenPlan(dto);
+		this.normalizeLimitQty(dto);
+
+		const {
+			hasSubscription,
+			planType,
+			packageName,
+			actualPrice,
+			offerPrice,
+			paymentTerms,
+			startDate,
+			totalQtyKg,
+			vegetableLimits,
+			...customerData
+		} = dto;
+
+		this.normalizeContact(customerData);
+
+		const newPhone = customerData.phone ?? existing.phone;
+		const newEmail =
+			customerData.email !== undefined ? customerData.email : existing.email;
+		if (customerData.phone !== undefined || customerData.email !== undefined) {
+			await this.checkDuplicate(newPhone, newEmail, id);
+		}
+
+		if (vegetableLimits?.length) {
+			await this.validateLimits(vegetableLimits);
+		}
+
+		try {
+			await this.prisma.$transaction(async (tx) => {
+				// ── Update customer fields ───────────────────────
+				const updateData: any = {};
+				if (customerData.name !== undefined)
+					updateData.name = customerData.name;
+				if (customerData.phone !== undefined)
+					updateData.phone = customerData.phone;
+				if (customerData.email !== undefined)
+					updateData.email = customerData.email;
+				if (customerData.address !== undefined)
+					updateData.address = customerData.address;
+				if (customerData.status !== undefined)
+					updateData.status = customerData.status;
+
+				if (Object.keys(updateData).length > 0) {
+					await tx.customer.update({ where: { id }, data: updateData });
+				}
+
+				// ── Subscription upsert ──────────────────────────
+				const hasSub =
+					hasSubscription !== undefined
+						? hasSubscription
+						: planType !== undefined || packageName !== undefined;
+
+				if (hasSub || planType || packageName || offerPrice != null) {
+					const existingSub = await tx.subscription.findFirst({
+						where: { customerId: id },
+						orderBy: { createdAt: "desc" },
+					});
+
+					const subData: any = {};
+					if (planType !== undefined) subData.type = planType;
+					if (packageName !== undefined) subData.package = packageName;
+					if (actualPrice !== undefined) subData.actualPrice = actualPrice;
+					if (offerPrice !== undefined) subData.offerPrice = offerPrice;
+					if (paymentTerms !== undefined) subData.paymentTerms = paymentTerms;
+					if (startDate !== undefined)
+						subData.startDate = startDate ? new Date(startDate) : null;
+
+					if (existingSub) {
+						await tx.subscription.update({
+							where: { id: existingSub.id },
+							data: subData,
+						});
+					} else if (planType && packageName) {
+						await tx.subscription.create({
+							data: {
+								customerId: id,
+								type: planType,
+								package: packageName,
+								actualPrice: actualPrice ?? null,
+								offerPrice: offerPrice ?? 0,
+								paymentTerms: paymentTerms ?? null,
+								startDate: startDate ? new Date(startDate) : null,
+								status: "active",
+							},
+						});
+					}
+				}
+
+				// ── Plan upsert + limits replace ─────────────────
+				if (totalQtyKg !== undefined || vegetableLimits !== undefined) {
+					const existingPlan = await tx.customerPlan.findFirst({
+						where: { customerId: id },
+						orderBy: { createdAt: "desc" },
+					});
+
+					if (existingPlan) {
+						if (totalQtyKg !== undefined) {
+							await tx.customerPlan.update({
+								where: { id: existingPlan.id },
+								data: { totalQty: totalQtyKg },
+							});
+						}
+
+						if (vegetableLimits !== undefined) {
+							await tx.vegetableLimit.deleteMany({
+								where: { planId: existingPlan.id },
+							});
+							if (vegetableLimits.length > 0) {
+								await tx.vegetableLimit.createMany({
+									data: vegetableLimits.map((l) => ({
+										planId: existingPlan.id,
+										vegetableId: l.vegetableId,
+										...this.resolveLimit(l),
+									})),
+								});
+							}
+						}
+					} else {
+						await tx.customerPlan.create({
+							data: {
+								customerId: id,
+								totalQty: totalQtyKg ?? 0,
+								...(vegetableLimits?.length && {
+									limits: {
+										create: vegetableLimits.map((l) => ({
+											vegetableId: l.vegetableId,
+											...this.resolveLimit(l),
+										})),
+									},
+								}),
+							},
+						});
+					}
+				}
+			});
+
+			// Re-fetch full customer
+			const full = await this.prisma.customer.findUnique({
+				where: { id },
+				include: this.fullInclude,
+			});
+			return this.mapCustomerResponse(full);
+		} catch (error) {
+			this.handleUniqueError(error);
+		}
+	}
+
+	// ═════════════════════════════════════════════════════════════
+	// CUSTOMER DETAILS (detailed view with orders)
+	// ═════════════════════════════════════════════════════════════
 
 	async getCustomerDetails(id: number) {
 		const customer = await this.prisma.customer.findUnique({
@@ -176,7 +464,7 @@ export class CustomersService {
 		});
 		if (!customer) throw new NotFoundException("Customer not found");
 
-		const [rawSubscriptions, pastOrders] = await Promise.all([
+		const [rawSubscriptions, pastOrders, plan] = await Promise.all([
 			this.prisma.subscription.findMany({
 				where: { customerId: id },
 				select: {
@@ -185,6 +473,9 @@ export class CustomersService {
 					package: true,
 					status: true,
 					startDate: true,
+					actualPrice: true,
+					offerPrice: true,
+					paymentTerms: true,
 				},
 			}),
 			this.prisma.order.findMany({
@@ -208,20 +499,29 @@ export class CustomersService {
 					},
 				},
 			}),
+			this.prisma.customerPlan.findFirst({
+				where: { customerId: id },
+				orderBy: { createdAt: "desc" },
+				include: {
+					limits: {
+						include: { vegetable: { select: { name: true, unit: true } } },
+					},
+				},
+			}),
 		]);
 
 		const subscriptions = rawSubscriptions.map((s) => ({
 			...s,
 			startDate: s.startDate ?? customer.createdAt,
+			actualPrice: s.actualPrice ?? 0,
+			offerPrice: s.offerPrice ?? null,
+			paymentTerms: s.paymentTerms ?? "",
 		}));
 
-		// Calculate consumed quantity from DELIVERED orders only
 		let totalKg = 0;
 		const piecesMap: Record<string, number> = {};
 		for (const o of pastOrders) {
 			if (o.status !== "DELIVERED") continue;
-
-			// Prefer normalized orderItems, fall back to legacy JSON items
 			const itemsList: { name?: string; quantity: number; unit: string }[] =
 				o.orderItems.length > 0
 					? o.orderItems.map((oi) => ({
@@ -244,11 +544,6 @@ export class CustomersService {
 			}
 		}
 
-		const consumedQuantity = {
-			kg: Math.round(totalKg * 100) / 100,
-			pieces: piecesMap,
-		};
-
 		return {
 			customer: {
 				id: customer.id,
@@ -256,10 +551,24 @@ export class CustomersService {
 				email: customer.email,
 				phone: customer.phone,
 				address: customer.address,
+				status: customer.status,
 				createdAt: customer.createdAt,
 			},
 			subscriptions,
-			consumedQuantity,
+			totalQtyKg: plan?.totalQty ?? null,
+			vegetableLimits: plan?.limits
+				? plan.limits.map((l: any) => ({
+						vegetableId: l.vegetableId,
+						vegetableName: l.vegetable.name,
+						unit: l.vegetable.unit ?? "kg",
+						maxQty:
+							(l.vegetable.unit === "piece" ? l.maxQtyPiece : l.maxQtyKg) ?? 0,
+					}))
+				: [],
+			consumedQuantity: {
+				kg: Math.round(totalKg * 100) / 100,
+				pieces: piecesMap,
+			},
 			pastOrders: pastOrders.map((o) => ({
 				id: o.id,
 				items: o.items,
@@ -270,162 +579,22 @@ export class CustomersService {
 		};
 	}
 
-	async findOne(id: number) {
+	// ═════════════════════════════════════════════════════════════
+	// GET PLAN WITH LIMITS
+	// ═════════════════════════════════════════════════════════════
+
+	async getPlan(customerId: number) {
 		const customer = await this.prisma.customer.findUnique({
-			where: { id },
-			include: {
-				subscriptions: {
-					include: { kitchenGarden: true, deliveries: true },
-				},
-				orders: true,
-				payments: true,
-				...this.planInclude,
-			},
+			where: { id: customerId },
 		});
 		if (!customer) throw new NotFoundException("Customer not found");
-		return this.mapCustomerResponse(customer);
-	}
-
-	async update(id: number, dto: UpdateCustomerDto) {
-		const existing = await this.findOne(id);
-
-		const { subscription, plan, ...customerData } = dto;
-		this.normalizeContact(customerData);
-
-		// If phone or email is changing, check uniqueness of the new combo
-		const newPhone = customerData.phone ?? existing.phone;
-		const newEmail =
-			customerData.email !== undefined ? customerData.email : existing.email;
-		if (customerData.phone !== undefined || customerData.email !== undefined) {
-			await this.checkDuplicate(newPhone, newEmail, id);
-		}
-
-		try {
-			// Update customer fields
-			const customer = await this.prisma.customer.update({
-				where: { id },
-				data: customerData,
-				include: { subscriptions: true },
-			});
-
-			let updatedSub: any = null;
-
-			if (subscription) {
-				const subData: any = { ...subscription };
-				delete subData.id;
-				if (subscription.startDate)
-					subData.startDate = new Date(subscription.startDate);
-				if (subscription.endDate)
-					subData.endDate = new Date(subscription.endDate);
-				if (subscription.nextRenewal)
-					subData.nextRenewal = new Date(subscription.nextRenewal);
-
-				if (subscription.id) {
-					updatedSub = await this.prisma.subscription.update({
-						where: { id: subscription.id },
-						data: subData,
-					});
-				} else {
-					subData.customerId = id;
-					updatedSub = await this.prisma.subscription.create({
-						data: subData,
-					});
-				}
-			}
-
-			// ── Plan update (replace limits) ────────────────────
-			let updatedPlan: any = null;
-			if (plan) {
-				// Find latest plan for this customer
-				const existingPlan = await this.prisma.customerPlan.findFirst({
-					where: { customerId: id },
-					orderBy: { createdAt: "desc" },
-				});
-
-				if (existingPlan) {
-					// Update totalQty / label
-					const planUpdateData: any = {};
-					if (plan.totalQty != null) planUpdateData.totalQty = plan.totalQty;
-					if (plan.label !== undefined) planUpdateData.label = plan.label;
-
-					await this.prisma.customerPlan.update({
-						where: { id: existingPlan.id },
-						data: planUpdateData,
-					});
-
-					// Replace limits if provided
-					if (plan.limits !== undefined) {
-						await this.prisma.vegetableLimit.deleteMany({
-							where: { planId: existingPlan.id },
-						});
-						if (plan.limits.length > 0) {
-							await this.prisma.vegetableLimit.createMany({
-								data: plan.limits.map((l) => ({
-									planId: existingPlan.id,
-									vegetableId: l.vegetableId,
-									maxQtyKg: l.maxQtyKg,
-									maxQtyPiece: l.maxQtyPiece,
-								})),
-							});
-						}
-					}
-
-					updatedPlan = await this.prisma.customerPlan.findUnique({
-						where: { id: existingPlan.id },
-						include: {
-							limits: {
-								include: { vegetable: { select: { name: true } } },
-							},
-						},
-					});
-				} else {
-					// No existing plan → create new
-					updatedPlan = await this.prisma.customerPlan.create({
-						data: {
-							customerId: id,
-							totalQty: plan.totalQty ?? 0,
-							label: plan.label,
-							...(plan.limits?.length && {
-								limits: {
-									create: plan.limits.map((l) => ({
-										vegetableId: l.vegetableId,
-										maxQtyKg: l.maxQtyKg,
-										maxQtyPiece: l.maxQtyPiece,
-									})),
-								},
-							}),
-						},
-						include: {
-							limits: {
-								include: { vegetable: { select: { name: true } } },
-							},
-						},
-					});
-				}
-			}
-
-			// Re-fetch full customer with plan+limits for response
-			const full = await this.prisma.customer.findUnique({
-				where: { id },
-				include: this.planInclude,
-			});
-
-			return this.mapCustomerResponse(full);
-		} catch (error) {
-			this.handleUniqueError(error);
-		}
-	}
-
-	// ─── GET PLAN WITH LIMITS ───────────────────────────────────
-	async getPlan(customerId: number) {
-		await this.findOne(customerId); // ensure customer exists
 
 		const plan = await this.prisma.customerPlan.findFirst({
 			where: { customerId },
 			orderBy: { createdAt: "desc" },
 			include: {
 				limits: {
-					include: { vegetable: { select: { name: true } } },
+					include: { vegetable: { select: { name: true, unit: true } } },
 				},
 			},
 		});
@@ -441,14 +610,22 @@ export class CustomersService {
 			limits: plan.limits.map((l) => ({
 				vegetableId: l.vegetableId,
 				vegetableName: l.vegetable.name,
+				unit: l.vegetable.unit ?? "kg",
+				maxQty:
+					(l.vegetable.unit === "piece" ? l.maxQtyPiece : l.maxQtyKg) ?? 0,
 				maxQtyKg: l.maxQtyKg,
 				maxQtyPiece: l.maxQtyPiece,
 			})),
 		};
 	}
 
+	// ═════════════════════════════════════════════════════════════
+	// DELETE
+	// ═════════════════════════════════════════════════════════════
+
 	async remove(id: number) {
-		await this.findOne(id);
+		const customer = await this.prisma.customer.findUnique({ where: { id } });
+		if (!customer) throw new NotFoundException("Customer not found");
 		await this.prisma.customer.delete({ where: { id } });
 		return { message: "Customer deleted successfully" };
 	}

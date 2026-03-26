@@ -7,143 +7,14 @@ import {
 	IsDateString,
 	IsIn,
 	IsArray,
+	IsBoolean,
 	ValidateNested,
-	ValidateIf,
 } from "class-validator";
 import { Type, Transform } from "class-transformer";
 
-// ─── Nested Plan DTOs ───────────────────────────────────────────
+// ─── Nested Subscription (frontend format) ─────────────────────
 
-export class VegetableLimitDto {
-	@IsInt()
-	@IsNotEmpty()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseInt(value, 10) : value,
-	)
-	vegetableId!: number;
-
-	@IsNumber()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseFloat(value) : value,
-	)
-	maxQtyKg?: number;
-
-	@IsInt()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseInt(value, 10) : value,
-	)
-	maxQtyPiece?: number;
-}
-
-export class CreatePlanDto {
-	@IsNumber()
-	@IsNotEmpty()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseFloat(value) : value,
-	)
-	totalQty!: number;
-
-	@IsString()
-	@IsOptional()
-	label?: string;
-
-	@IsArray()
-	@IsOptional()
-	@ValidateNested({ each: true })
-	@Type(() => VegetableLimitDto)
-	limits?: VegetableLimitDto[];
-}
-
-export class UpdatePlanDto {
-	@IsNumber()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseFloat(value) : value,
-	)
-	totalQty?: number;
-
-	@IsString()
-	@IsOptional()
-	label?: string;
-
-	@IsArray()
-	@IsOptional()
-	@ValidateNested({ each: true })
-	@Type(() => VegetableLimitDto)
-	limits?: VegetableLimitDto[];
-}
-
-// ─── Nested Subscription DTOs ───────────────────────────────────
-
-export class NestedCreateSubscriptionDto {
-	@IsString()
-	@IsNotEmpty()
-	type!: string; // STF, KG, KG + STF, Land, landscape
-
-	@IsString()
-	@IsNotEmpty()
-	package!: string;
-
-	@IsNumber()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseFloat(value) : value,
-	)
-	actualPrice?: number;
-
-	@IsNumber()
-	@IsNotEmpty()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseFloat(value) : value,
-	)
-	offerPrice!: number;
-
-	@IsString()
-	@IsOptional()
-	paymentTerms?: string;
-
-	@IsNumber()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseFloat(value) : value,
-	)
-	totalQuantity?: number;
-
-	@IsInt()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseInt(value, 10) : value,
-	)
-	totalDeliveries?: number;
-
-	@IsDateString()
-	@IsOptional()
-	startDate?: string;
-
-	@IsDateString()
-	@IsOptional()
-	endDate?: string;
-
-	@IsString()
-	@IsOptional()
-	@IsIn(["active", "inactive", "paused", "expired", "cancelled"])
-	status?: string;
-
-	@IsString()
-	@IsOptional()
-	remarks?: string;
-}
-
-export class NestedUpdateSubscriptionDto {
-	@IsInt()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseInt(value, 10) : value,
-	)
-	id?: number;
-
+export class SubscriptionDto {
 	@IsString()
 	@IsOptional()
 	type?: string;
@@ -170,64 +41,73 @@ export class NestedUpdateSubscriptionDto {
 	@IsOptional()
 	paymentTerms?: string;
 
-	@IsNumber()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseFloat(value) : value,
-	)
-	totalQuantity?: number;
-
-	@IsNumber()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseFloat(value) : value,
-	)
-	deliveredQty?: number;
-
-	@IsInt()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseInt(value, 10) : value,
-	)
-	totalDeliveries?: number;
-
-	@IsInt()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseInt(value, 10) : value,
-	)
-	deliveredBasket?: number;
-
-	@IsNumber()
-	@IsOptional()
-	@Transform(({ value }) =>
-		typeof value === "string" ? parseFloat(value) : value,
-	)
-	pendingKgs?: number;
-
 	@IsDateString()
 	@IsOptional()
 	startDate?: string;
 
-	@IsDateString()
-	@IsOptional()
-	endDate?: string;
-
-	@IsDateString()
-	@IsOptional()
-	nextRenewal?: string;
-
 	@IsString()
 	@IsOptional()
-	@IsIn(["active", "inactive", "paused", "expired", "cancelled"])
 	status?: string;
-
-	@IsString()
-	@IsOptional()
-	remarks?: string;
 }
 
-// ─── Customer DTOs ──────────────────────────────────────────────
+// ─── Nested Plan (frontend format) ──────────────────────────────
+
+export class PlanDto {
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	totalQty?: number;
+}
+
+// ─── Vegetable Limit (flat) ─────────────────────────────────────
+
+export class VegetableLimitDto {
+	@IsInt()
+	@IsNotEmpty()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseInt(value, 10) : value,
+	)
+	vegetableId!: number;
+
+	@IsString()
+	@IsOptional()
+	@IsIn(["kg", "piece"])
+	unit?: string;
+
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	maxQty?: number;
+
+	// Legacy support
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	maxQtyKg?: number;
+
+	@IsInt()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseInt(value, 10) : value,
+	)
+	maxQtyPiece?: number;
+
+	// Frontend sends limitQty instead of maxQty
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	limitQty?: number;
+}
+
+// ─── Create Customer DTO (flat payload) ─────────────────────────
 
 export class CreateCustomerDto {
 	@IsString()
@@ -246,16 +126,78 @@ export class CreateCustomerDto {
 	@IsNotEmpty()
 	address!: string;
 
+	@IsString()
 	@IsOptional()
-	@ValidateNested()
-	@Type(() => NestedCreateSubscriptionDto)
-	subscription?: NestedCreateSubscriptionDto;
+	@IsIn(["active", "inactive"])
+	status?: string;
 
+	// ── Subscription fields ─────────────────────────────────
+	@IsBoolean()
+	@IsOptional()
+	@Transform(({ value }) => {
+		if (typeof value === "string") return value === "true";
+		return value;
+	})
+	hasSubscription?: boolean;
+
+	@IsString()
+	@IsOptional()
+	planType?: string;
+
+	@IsString()
+	@IsOptional()
+	packageName?: string;
+
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	actualPrice?: number;
+
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	offerPrice?: number;
+
+	@IsString()
+	@IsOptional()
+	paymentTerms?: string;
+
+	@IsDateString()
+	@IsOptional()
+	startDate?: string;
+
+	// ── Nested subscription (frontend format) ──────────────
 	@IsOptional()
 	@ValidateNested()
-	@Type(() => CreatePlanDto)
-	plan?: CreatePlanDto;
+	@Type(() => SubscriptionDto)
+	subscription?: SubscriptionDto;
+
+	// ── Nested plan (frontend format) ──────────────────────
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => PlanDto)
+	plan?: PlanDto;
+
+	// ── Plan limit fields ───────────────────────────────────
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	totalQtyKg?: number;
+
+	@IsArray()
+	@IsOptional()
+	@ValidateNested({ each: true })
+	@Type(() => VegetableLimitDto)
+	vegetableLimits?: VegetableLimitDto[];
 }
+
+// ─── Update Customer DTO (flat payload, all optional) ───────────
 
 export class UpdateCustomerDto {
 	@IsString()
@@ -274,13 +216,73 @@ export class UpdateCustomerDto {
 	@IsOptional()
 	address?: string;
 
+	@IsString()
 	@IsOptional()
-	@ValidateNested()
-	@Type(() => NestedUpdateSubscriptionDto)
-	subscription?: NestedUpdateSubscriptionDto;
+	@IsIn(["active", "inactive"])
+	status?: string;
 
+	// ── Subscription fields ─────────────────────────────────
+	@IsBoolean()
+	@IsOptional()
+	@Transform(({ value }) => {
+		if (typeof value === "string") return value === "true";
+		return value;
+	})
+	hasSubscription?: boolean;
+
+	@IsString()
+	@IsOptional()
+	planType?: string;
+
+	@IsString()
+	@IsOptional()
+	packageName?: string;
+
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	actualPrice?: number;
+
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	offerPrice?: number;
+
+	@IsString()
+	@IsOptional()
+	paymentTerms?: string;
+
+	@IsDateString()
+	@IsOptional()
+	startDate?: string;
+
+	// ── Nested subscription (frontend format) ──────────────
 	@IsOptional()
 	@ValidateNested()
-	@Type(() => UpdatePlanDto)
-	plan?: UpdatePlanDto;
+	@Type(() => SubscriptionDto)
+	subscription?: SubscriptionDto;
+
+	// ── Nested plan (frontend format) ──────────────────────
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => PlanDto)
+	plan?: PlanDto;
+
+	// ── Plan limit fields ───────────────────────────────────
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	totalQtyKg?: number;
+
+	@IsArray()
+	@IsOptional()
+	@ValidateNested({ each: true })
+	@Type(() => VegetableLimitDto)
+	vegetableLimits?: VegetableLimitDto[];
 }
