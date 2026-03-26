@@ -12,11 +12,17 @@ import {
 	CreateOrderDto,
 	UpdateOrderDto,
 	UpdateOrderStatusDto,
+	ValidateOrderDto,
 } from "./dto/index.js";
 
 @Controller("orders")
 export class OrdersController {
 	constructor(private readonly ordersService: OrdersService) {}
+
+	@Post("validate")
+	validateOrder(@Body() dto: ValidateOrderDto) {
+		return this.ordersService.validateOrder(dto);
+	}
 
 	@Post()
 	create(@Body() dto: CreateOrderDto) {
@@ -46,6 +52,11 @@ export class OrdersController {
 	@Patch(":id/mark-delivered")
 	markDelivered(@Param("id") id: string) {
 		return this.ordersService.markDelivered(id);
+	}
+
+	@Patch(":id/skip")
+	skipOrder(@Param("id") id: string) {
+		return this.ordersService.skipOrder(id);
 	}
 
 	@Delete(":id")

@@ -6,9 +6,74 @@ import {
 	IsInt,
 	IsDateString,
 	IsIn,
+	IsArray,
 	ValidateNested,
+	ValidateIf,
 } from "class-validator";
 import { Type, Transform } from "class-transformer";
+
+// ─── Nested Plan DTOs ───────────────────────────────────────────
+
+export class VegetableLimitDto {
+	@IsInt()
+	@IsNotEmpty()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseInt(value, 10) : value,
+	)
+	vegetableId!: number;
+
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	maxQtyKg?: number;
+
+	@IsInt()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseInt(value, 10) : value,
+	)
+	maxQtyPiece?: number;
+}
+
+export class CreatePlanDto {
+	@IsNumber()
+	@IsNotEmpty()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	totalQty!: number;
+
+	@IsString()
+	@IsOptional()
+	label?: string;
+
+	@IsArray()
+	@IsOptional()
+	@ValidateNested({ each: true })
+	@Type(() => VegetableLimitDto)
+	limits?: VegetableLimitDto[];
+}
+
+export class UpdatePlanDto {
+	@IsNumber()
+	@IsOptional()
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseFloat(value) : value,
+	)
+	totalQty?: number;
+
+	@IsString()
+	@IsOptional()
+	label?: string;
+
+	@IsArray()
+	@IsOptional()
+	@ValidateNested({ each: true })
+	@Type(() => VegetableLimitDto)
+	limits?: VegetableLimitDto[];
+}
 
 // ─── Nested Subscription DTOs ───────────────────────────────────
 
@@ -185,6 +250,11 @@ export class CreateCustomerDto {
 	@ValidateNested()
 	@Type(() => NestedCreateSubscriptionDto)
 	subscription?: NestedCreateSubscriptionDto;
+
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => CreatePlanDto)
+	plan?: CreatePlanDto;
 }
 
 export class UpdateCustomerDto {
@@ -208,4 +278,9 @@ export class UpdateCustomerDto {
 	@ValidateNested()
 	@Type(() => NestedUpdateSubscriptionDto)
 	subscription?: NestedUpdateSubscriptionDto;
+
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => UpdatePlanDto)
+	plan?: UpdatePlanDto;
 }

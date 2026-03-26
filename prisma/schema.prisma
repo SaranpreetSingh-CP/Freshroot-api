@@ -30,6 +30,7 @@ model Customer {
   orders          Order[]
   payments        Payment[]
   supportTickets  SupportTicket[]
+  plans           CustomerPlan[]
 
   @@unique([phone, email])
 }
@@ -62,20 +63,60 @@ model Subscription {
 
 // ─── Order ──────────────────────────────────────────────────────
 model Order {
-  id            String     @id @default(uuid())
+  id            String      @id @default(uuid())
   customerId    Int
-  customer      Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  items         Json       // [{vegetableId?, name, quantity, unit}]
+  customer      Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items         Json        // [{vegetableId?, name, quantity, unit}] — legacy / denormalized
   totalAmount   Float
-  cost          Float?     // calculated from vegetable prices
-  status        String     @default("PENDING") // PENDING, CONFIRMED, PROCESSING, DELIVERED, CANCELLED, MISSED (computed only)
+  cost          Float?      // calculated from vegetable prices
+  totalQty      Float?      // sum of item quantities
+  status        String      @default("PENDING") // PENDING, CONFIRMED, PROCESSING, DELIVERED, CANCELLED, SKIPPED, MISSED (computed only)
   deliveryDate  DateTime
-  deliveredAt   DateTime?  // set when marked as delivered
+  deliveredAt   DateTime?   // set when marked as delivered
   notes         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  orderItems    OrderItem[]
 
   @@index([deliveryDate])
+}
+
+// ─── Order Item ─────────────────────────────────────────────────
+model OrderItem {
+  id          String    @id @default(uuid())
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  vegetableId Int
+  vegetable   Vegetable @relation(fields: [vegetableId], references: [id], onDelete: Cascade)
+  quantity    Float
+  unit        String    // kg / piece
+  createdAt   DateTime  @default(now())
+}
+
+// ─── Customer Plan ──────────────────────────────────────────────
+model CustomerPlan {
+  id          String           @id @default(uuid())
+  customerId  Int
+  customer    Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  totalQty    Float            // total allowed quantity (e.g. 72 kg)
+  label       String?          // e.g. "Monthly STF Plan"
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  limits      VegetableLimit[]
+}
+
+// ─── Vegetable Limit (per-plan per-vegetable cap) ───────────────
+model VegetableLimit {
+  id           String       @id @default(uuid())
+  planId       String
+  plan         CustomerPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  vegetableId  Int
+  vegetable    Vegetable    @relation(fields: [vegetableId], references: [id], onDelete: Cascade)
+  maxQtyKg     Float?       // cap in kg (for kg-based vegetables)
+  maxQtyPiece  Int?         // cap in pieces (for piece-based vegetables)
+  createdAt    DateTime     @default(now())
+
+  @@unique([planId, vegetableId])
 }
 
 // ─── Delivery ───────────────────────────────────────────────────
@@ -189,6 +230,8 @@ model Vegetable {
   createdAt    DateTime                  @default(now())
   availability VegetableAvailability[]
   prices       VegetablePrice[]
+  orderItems   OrderItem[]
+  limits       VegetableLimit[]
 }
 
 // ─── Vegetable Availability ─────────────────────────────────────

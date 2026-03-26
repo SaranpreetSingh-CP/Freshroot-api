@@ -17,6 +17,7 @@ export const ORDER_STATUSES = [
 	"PROCESSING",
 	"DELIVERED",
 	"CANCELLED",
+	"SKIPPED",
 	"MISSED",
 ] as const;
 
@@ -30,6 +31,7 @@ export function normalizeOrderStatus(raw?: string): string | undefined {
 		PROCESSING: "PROCESSING",
 		DELIVERED: "DELIVERED",
 		CANCELLED: "CANCELLED",
+		SKIPPED: "SKIPPED",
 		MISSED: "MISSED",
 		// legacy lowercase aliases
 		DISPATCHED: "PROCESSING",
@@ -54,7 +56,8 @@ export function getComputedStatus(order: {
 	if (
 		delivery < today &&
 		order.status !== "DELIVERED" &&
-		order.status !== "CANCELLED"
+		order.status !== "CANCELLED" &&
+		order.status !== "SKIPPED"
 	) {
 		return "MISSED";
 	}
@@ -199,4 +202,18 @@ export class UpdateOrderStatusDto {
 	)
 	@IsIn(ORDER_STATUSES as unknown as string[])
 	status!: string;
+}
+
+export class ValidateOrderDto {
+	@Transform(({ value }) =>
+		typeof value === "string" ? parseInt(value, 10) : value,
+	)
+	@IsInt()
+	@IsNotEmpty()
+	customerId!: number;
+
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => OrderItemDto)
+	items!: OrderItemDto[];
 }
