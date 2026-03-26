@@ -20,7 +20,8 @@ export class OrdersService {
 	private calcTotalQty(items: { quantity?: number; qty?: number }[]): number {
 		return (
 			Math.round(
-				items.reduce((sum, i) => sum + (i.quantity ?? (i as any).qty ?? 0), 0) * 100,
+				items.reduce((sum, i) => sum + (i.quantity ?? (i as any).qty ?? 0), 0) *
+					100,
 			) / 100
 		);
 	}
